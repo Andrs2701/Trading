@@ -49,6 +49,7 @@ class Params:
     tp_lookback: int = 100     # P26
     rr_min: float = 0.5        # P27
     risk_pct: float = 0.01     # P28
+    leverage_cap: float = 5.0  # P37 — nocional máx = 5×equity (FASE-6 §5)
     max_dd_day: float = 0.02   # P30
     max_dd_week: float = 0.04  # P31
     max_dd_month: float = 0.06 # P32
@@ -181,6 +182,7 @@ def resample(m5: pd.DataFrame, rule: str) -> pd.DataFrame:
 class Trade:
     symbol: str; direction: int; t_entry: int = 0; entry: float = 0.0
     sl0: float = 0.0; tp: float = 0.0; qty: float = 0.0
+    sl_init: float = 0.0    # stop inicial (sl0 se actualiza con el trailing)
     t_exit: int = 0; exit: float = 0.0; reason: str = ""; pnl: float = 0.0; r: float = 0.0
 
 
@@ -460,8 +462,9 @@ class Engine:
             self.state = "STRUCTURE"; return
         mult = self.hmm_mult(g) if self.hmm_mult else 1.0           # Pilar B §11
         qty = (p.risk_pct * mult * self.equity) / dist
+        qty = min(qty, p.leverage_cap * self.equity / entry)        # P37 (FASE-6 §5)
         fee = entry * qty * p.fee_pct
-        self.pos = Trade(self.symbol, d, self.P.t[m + 1], entry, sl0, tp, qty)
+        self.pos = Trade(self.symbol, d, self.P.t[m + 1], entry, sl0, tp, qty, sl_init=sl0)
         self.pos.pnl -= fee
         self.state = "IN_POSITION"
 

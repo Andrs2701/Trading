@@ -43,6 +43,7 @@ pStopMin   = input.float(0.15,"P24 stop mínimo (xATR H1)")
 pStopMax   = input.float(3.0, "P25 stop máximo (xATR H1)")
 pRrMin     = input.float(0.5, "P27 RR mínimo")
 pRiskPct   = input.float(1.0, "P28 riesgo por trade (%)") / 100.0
+pLevCap    = input.float(5.0, "P37 apalancamiento nocional máx (xEquity)")
 pDdDay     = input.float(2.0, "P30 límite pérdida diaria (%)") / 100.0
 pDdWeek    = input.float(4.0, "P31 límite semanal (%)") / 100.0
 pDdMonth   = input.float(6.0, "P32 límite mensual (%)") / 100.0
@@ -237,7 +238,8 @@ if trig
     rr    = dist > 0 ? math.abs(close - tp) / dist : 0.0
     okSanity = dist >= pStopMin * iAtr and dist <= pStopMax * iAtr and rr >= pRrMin
     if okSanity
-        qty = (pRiskPct * strategy.equity) / dist
+        qty = math.min((pRiskPct * strategy.equity) / dist,
+                       pLevCap * strategy.equity / close)           // P37 (FASE-6 §5)
         slPrice := sl0, tpPrice := tp
         if dir < 0
             strategy.entry("S", strategy.short, qty=qty)
