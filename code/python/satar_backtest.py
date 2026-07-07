@@ -263,18 +263,22 @@ class Engine:
             if b0 > 0 and (h0 - max(o0, c0)) >= p.pin_ratio * b0 and c0 <= (h0 + l0) / 2 + 0.1 * (h0 - l0):
                 return True
             sh, _ = swings(G.h[:g + 1], G.l[:g + 1], self.p.k_frac_i, g)
-            inz = [v for t, v in sh[-4:] if zlo <= v <= zhi]
-            if len(inz) >= 2 and abs(inz[-1] - inz[-2]) <= p.dtop_tol_atr * G.atr[g]:
-                return True
+            inz = [(t, v) for t, v in sh[-4:] if zlo <= v <= zhi]
+            if len(inz) >= 2 and abs(inz[-1][1] - inz[-2][1]) <= p.dtop_tol_atr * G.atr[g]:
+                neck = G.l[inz[-2][0]:inz[-1][0] + 1].min()      # mínimo entre los dos techos
+                if c0 < neck:                                     # G5c: cierre bajo el neckline
+                    return True
         else:      # long simétrico
             if c0 > o0 and o0 <= c1 and c0 > o1 and b0 > b1:
                 return True
             if b0 > 0 and (min(o0, c0) - l0) >= p.pin_ratio * b0 and c0 >= (h0 + l0) / 2 - 0.1 * (h0 - l0):
                 return True
             _, sl_ = swings(G.h[:g + 1], G.l[:g + 1], self.p.k_frac_i, g)
-            inz = [v for t, v in sl_[-4:] if zlo <= v <= zhi]
-            if len(inz) >= 2 and abs(inz[-1] - inz[-2]) <= p.dtop_tol_atr * G.atr[g]:
-                return True
+            inz = [(t, v) for t, v in sl_[-4:] if zlo <= v <= zhi]
+            if len(inz) >= 2 and abs(inz[-1][1] - inz[-2][1]) <= p.dtop_tol_atr * G.atr[g]:
+                neck = G.h[inz[-2][0]:inz[-1][0] + 1].max()      # máximo entre los dos suelos
+                if c0 > neck:                                     # G5c: cierre sobre el neckline
+                    return True
         return False
 
     # ---------------- módulo I (FASE-2 §4) ----------------

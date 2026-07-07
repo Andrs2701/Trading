@@ -24,7 +24,12 @@ def fetch_bybit_m5(symbol="BTCUSDT", days=90):
             with urllib.request.urlopen(req) as response:
                 res = json.loads(response.read().decode())
                 if res.get("retCode") != 0:
-                    print(f"API Error: {res.get('retMsg')}")
+                    msg = str(res.get("retMsg", ""))
+                    if "Rate Limit" in msg or "Too many" in msg:
+                        print("Rate limit — esperando 30 s y reintentando...")
+                        time.sleep(30)
+                        continue
+                    print(f"API Error: {msg}")
                     break
                 klines = res.get("result", {}).get("list", [])
                 if not klines:
@@ -39,7 +44,7 @@ def fetch_bybit_m5(symbol="BTCUSDT", days=90):
                 # Print progress
                 dt_str = datetime.fromtimestamp(oldest_ts/1000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M')
                 print(f"Fetched up to: {dt_str} UTC")
-                time.sleep(0.05) # Respect rate limits
+                time.sleep(0.25) # Respect rate limits
         except Exception as e:
             print(f"Network error: {e}")
             break
@@ -51,7 +56,9 @@ def fetch_bybit_m5(symbol="BTCUSDT", days=90):
     # Columns in Bybit list: [start_time, open, high, low, close, volume, turnover]
     df = pd.DataFrame(all_data, columns=["timestamp", "open", "high", "low", "close", "volume", "turnover"])
     df["timestamp"] = pd.to_datetime(df["timestamp"].astype(float), unit="ms")
-    df = df.sort_values("timestamp").reset_index(drop=True)
+    df = (df.sort_values("timestamp")
+            .drop_duplicates(subset="timestamp", keep="first")
+            .reset_index(drop=True))
     
     # Select and rename columns for satar_backtest
     df = df[["timestamp", "open", "high", "low", "close", "volume"]]
@@ -61,4 +68,10 @@ def fetch_bybit_m5(symbol="BTCUSDT", days=90):
     print(f"Saved {len(df)} candles to {filename}!")
 
 if __name__ == "__main__":
-    fetch_bybit_m5("BTCUSDT", days=90)
+    import argparse
+    ap = argparse.ArgumentParser(description="Descarga klines M5 de Bybit (FASE-4 §1)")
+    ap.add_argument("--symbol", default="BTCUSDT")
+    ap.add_argument("--days", type=int, default=90,
+                    help="días de historia (BTCUSDT perp disponible desde ~2020: usar 2000+)")
+    a = ap.parse_args()
+    fetch_bybit_m5(a.symbol, days=a.days)

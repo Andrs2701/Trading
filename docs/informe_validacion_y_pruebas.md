@@ -107,7 +107,7 @@ Antes de pasar a producción con capital real, el sistema debe operar en una cue
 ### Criterios de Aceptación (Éxito en Demo)
 1. **Profit Factor (PF):** $\ge 1.5$ al finalizar el periodo.
 2. **Drawdown Máximo:** $< 10\%$ sobre el equity inicial de la demo.
-3. **Muestra Estadística:** $\ge 100$ operaciones completadas (para significancia).
+3. **Muestra Estadística:** $\ge 150$ operaciones completadas (criterio del plan original; ver `FASE-9-demo.md`, que prevalece sobre este esbozo).
 4. **Expectancy en R:** $> 0.15$ R por operación.
 5. **Consistencia:** Paridad superior al 95% entre las operaciones de la cuenta demo y el backtest teórico en tiempo de ejecución.
 

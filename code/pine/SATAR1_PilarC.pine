@@ -69,6 +69,9 @@ dAdx    = htf("D", dAdxRaw)
 dBody3  = htf("D", (math.abs(close-open) + math.abs(close[1]-open[1]) + math.abs(close[2]-open[2])) / 3.0)
 dPivH   = htf("D", ta.pivothigh(high, pKpivG, pKpivG))
 dPivL   = htf("D", ta.pivotlow(low,  pKpivG, pKpivG))
+// Neckline (G5c): valle/cresta de las 10 velas D1 previas a la vela de señal (aprox. A3)
+dNeckS  = htf("D", ta.lowest(low, 10)[1])
+dNeckL  = htf("D", ta.highest(high, 10)[1])
 newD1   = timeframe.change("D")
 
 // ------------------------------- Series H1 (intermedia) ---------------------
@@ -147,7 +150,13 @@ if newD1 and state < 4
     // G5 short: envolvente bajista / pinbar alto / doble techo (A3)
     engS = dC < dO and dO >= dC2 and dC < dO2 and math.abs(dC-dO) > math.abs(dC2-dO2)
     pinS = math.abs(dC-dO) > 0 and (dH - math.max(dO, dC)) >= pPinRatio * math.abs(dC-dO) and dC <= (dH+dL)/2 + 0.1*(dH-dL)
-    dtS  = array.size(zoneH) >= 2 and math.abs(array.get(zoneH, array.size(zoneH)-1) - array.get(zoneH, array.size(zoneH)-2)) <= pDTopTol * dAtr
+    // G5c doble techo: dos pivotes en la zona activa + cierre bajo el neckline
+    zh1  = array.size(zoneH) >= 1 ? array.get(zoneH, array.size(zoneH)-1) : na
+    zh2  = array.size(zoneH) >= 2 ? array.get(zoneH, array.size(zoneH)-2) : na
+    dtS  = not na(zh1) and not na(zh2) and not na(cR) and
+         math.abs(zh1 - zh2) <= pDTopTol * dAtr and
+         math.abs(zh1 - cR) <= w and math.abs(zh2 - cR) <= w and
+         dC < dNeckS
     g6s  = not (dC > (na(cR) ? 1e18 : cR + w))                  // G6 no invalidado
     if g1 and touchS and g3s and g4 and (engS or pinS or dtS) and g6s
         state := 1, dir := -1, biasAgeG := 0
@@ -158,7 +167,13 @@ if newD1 and state < 4
     g3l = dErArr >= pErArrive or dRsi <= 100 - pRsiExt
     engL = dC > dO and dO <= dC2 and dC > dO2 and math.abs(dC-dO) > math.abs(dC2-dO2)
     pinL = math.abs(dC-dO) > 0 and (math.min(dO, dC) - dL) >= pPinRatio * math.abs(dC-dO) and dC >= (dH+dL)/2 - 0.1*(dH-dL)
-    dtL  = array.size(zoneL) >= 2 and math.abs(array.get(zoneL, array.size(zoneL)-1) - array.get(zoneL, array.size(zoneL)-2)) <= pDTopTol * dAtr
+    // G5c doble suelo: dos pivotes en la zona activa + cierre sobre el neckline
+    zl1  = array.size(zoneL) >= 1 ? array.get(zoneL, array.size(zoneL)-1) : na
+    zl2  = array.size(zoneL) >= 2 ? array.get(zoneL, array.size(zoneL)-2) : na
+    dtL  = not na(zl1) and not na(zl2) and not na(cS) and
+         math.abs(zl1 - zl2) <= pDTopTol * dAtr and
+         math.abs(zl1 - cS) <= w and math.abs(zl2 - cS) <= w and
+         dC > dNeckL
     g6l  = not (dC < (na(cS) ? -1e18 : cS - w))
     if state == 0 and g1 and touchL and g3l and g4 and (engL or pinL or dtL) and g6l
         state := 1, dir := 1, biasAgeG := 0

@@ -1,0 +1,55 @@
+# SATAR-1 — Sistema de Trading Automatizado (Metodología Alex Ruiz)
+
+Ingeniería inversa, validación estadística y automatización de la metodología de trading
+de Alex Ruiz (@AlexRuiiz, YouTube). **Nada se asume rentable sin demostrarlo**: las métricas
+declaradas en los videos son hipótesis a falsar, no supuestos.
+
+## Arquitectura
+
+- **Pilar C** (edge): impulso–pullback–continuación multi-timeframe (D1/H1/M5), EMA50 exponencial, Fibonacci 0.382–0.618, riesgo 1%, trailing por EMA50 H1.
+- **Pilar B** (meta-capa): HMM de regímenes que modula exposición (1.0/0.5/0.0) — nunca re-optimiza parámetros.
+- **Pilar A** (infraestructura): Donchian 15m como banco de pruebas de la tubería Bybit.
+
+## Estructura
+
+| Ruta | Contenido |
+|------|-----------|
+| `corpus/` | 5 transcripciones fuente (trazabilidad de cada regla) |
+| `docs/FASE-0…10` | Documentos por fase (corpus → reglas → formalización → validación → backtesting → robustez → riesgo → automatización → plataforma → demo → producción) |
+| `docs/FASE-6-audit-completo.md` · `docs/informe_validacion_y_pruebas.md` | Auditoría de código y hoja de ruta de pruebas |
+| `code/python/satar_backtest.py` | **Motor de referencia** (máquina de estados FASE-2, fricciones FASE-4, kill-switch FASE-6) |
+| `code/python/download_data.py` | Descarga de klines M5 (Bybit v5) |
+| `code/python/satar_live.py` | Ejecutor demo/live (dry-run por defecto; testnet; SL/TP server-side) |
+| `code/pine/SATAR1_PilarC.pine` | Estrategia TradingView (Pine v6, anti-repintado) |
+| `code/mql5/SATAR1_PilarC.mq5` | Plantilla de port a MT5 (módulo G/I pendientes — no operar) |
+
+## Inicio rápido
+
+```bash
+cd code/python
+pip install numpy pandas               # + hmmlearn para el Pilar B
+python satar_backtest.py --smoke       # validar el motor
+python download_data.py --symbol BTCUSDT --days 2000
+python satar_backtest.py --csv btcusdt_m5.csv          # Pilar C
+python satar_backtest.py --csv btcusdt_m5.csv --hmm    # Pilar C + B
+python satar_live.py --symbol BTCUSDT --once           # señal actual (dry-run)
+```
+
+Ruta de pruebas completa: `docs/informe_validacion_y_pruebas.md` §3.
+Reglas duras: no dinero real sin aprobar Fase 5 (robustez) y Fase 9 (demo 90 días,
+PF>1.5 · DD<10% · expectancy>0 · **≥150 trades** · consistencia mensual).
+
+## Estado (2026-07-07)
+
+Fases 0–3 completas y auditadas · Fase 4–5 con motor y protocolo listos, **pendiente
+ejecución con ≥10 años de datos reales** · Fase 6 completa · Fase 7 completa (MQL5 en
+plantilla) · Fase 8 decidida (Python+Bybit para cripto, MT5 para FX) · Fases 9–10
+especificadas, se activan tras la Fase 5.
+
+> Diagnóstico conocido: con 60–135 días de BTC el sistema produce 0 señales (embudo
+> G1→G6 verificado: 28 velas limpias → 5 en zona → 0 conjunción completa). La
+> frecuencia declarada (~80 trades/año) solo es alcanzable con el universo multi-activo
+> de FASE-4 §1 y más historia — exactamente lo que la Fase 4 debe medir.
+
+**Descargo:** proyecto educativo/de investigación. Ni el código ni los documentos
+constituyen asesoría financiera.
