@@ -206,6 +206,7 @@ class Engine:
         self.equity = equity0; self.equity0 = equity0
         self.trades: list[Trade] = []; self.ecurve = []
         self.day_pnl = {}; self.week_pnl = {}; self.month_pnl = {}
+        self.day_start_equity = {}; self.week_start_equity = {}; self.month_start_equity = {}
 
     # ---------------- módulo G (FASE-2 §3) ----------------
     def _bias_check(self, g: int) -> int:
@@ -342,10 +343,21 @@ class Engine:
     # ---------------- riesgo / límites (FASE-2 §9) ----------------
     def _kill_switch(self, ts: int) -> bool:
         d = pd.Timestamp(ts, unit="s")
-        keys = (d.strftime("%Y%m%d"), f"{d.isocalendar().year}w{d.isocalendar().week}", d.strftime("%Y%m"))
-        lims = (self.p.max_dd_day, self.p.max_dd_week, self.p.max_dd_month)
-        books = (self.day_pnl, self.week_pnl, self.month_pnl)
-        return any(b.get(k, 0.0) <= -lim * self.equity0 for b, k, lim in zip(books, keys, lims))
+        day_key = d.strftime("%Y%m%d")
+        week_key = f"{d.isocalendar().year}w{d.isocalendar().week}"
+        month_key = d.strftime("%Y%m")
+        
+        eq_day = self.day_start_equity.get(day_key, self.equity0)
+        eq_week = self.week_start_equity.get(week_key, self.equity0)
+        eq_month = self.month_start_equity.get(month_key, self.equity0)
+        
+        lim_day = self.p.max_dd_day * eq_day
+        lim_week = self.p.max_dd_week * eq_week
+        lim_month = self.p.max_dd_month * eq_month
+        
+        return (self.day_pnl.get(day_key, 0.0) <= -lim_day or
+                self.week_pnl.get(week_key, 0.0) <= -lim_week or
+                self.month_pnl.get(month_key, 0.0) <= -lim_month)
 
     def _book_pnl(self, ts: int, pnl: float):
         d = pd.Timestamp(ts, unit="s")
@@ -361,6 +373,18 @@ class Engine:
         for m in range(p.ema_n + 1, self.P.n - 1):
             g, i = self.map_g[m], self.map_i[m]
             ts = self.P.t[m]
+            
+            # Registrar capital al inicio de cada período
+            dt = pd.Timestamp(ts, unit="s")
+            day_key = dt.strftime("%Y%m%d")
+            week_key = f"{dt.isocalendar().year}w{dt.isocalendar().week}"
+            month_key = dt.strftime("%Y%m")
+            if day_key not in self.day_start_equity:
+                self.day_start_equity[day_key] = self.equity
+            if week_key not in self.week_start_equity:
+                self.week_start_equity[week_key] = self.equity
+            if month_key not in self.month_start_equity:
+                self.month_start_equity[month_key] = self.equity
             # --- gestión de posición (intravela sobre la vela M5 m+1 se hace al abrirla;
             #     aquí: stops/TP contra la vela m ya cerrada del flujo en curso) ---
             if self.pos:
@@ -404,6 +428,7 @@ class Engine:
         p, I, d = self.p, self.I, self.bias
         raw = self.P.o[m + 1]                                       # apertura vela siguiente
         entry = raw * (1 + d * (p.spread_pct / 2 + p.slip_pct))     # fricciones D-3
+        sh, sl_ = swings(I.h[:i + 1], I.l[:i + 1], p.k_frac_i, i)
         depth = (abs((self.I.h[i] if d < 0 else self.I.l[i]) - self.f_imp)
                  / abs(self.o_imp - self.f_imp))
         buf = p.buf_atr * I.atr[i]
@@ -411,12 +436,16 @@ class Engine:
             sl0 = self._fib(0.75) + (buf if d < 0 else -buf)
         else:
             ext = self._fib(1.0)
-            sl0 = ext + (buf if d < 0 else -buf)
+            if d < 0:
+                last_sh = sh[-1][1] if sh else ext
+                sl0 = max(ext, last_sh) + buf
+            else:
+                last_sl = sl_[-1][1] if sl_ else ext
+                sl0 = min(ext, last_sl) - buf
         dist = abs(sl0 - entry)
         if dist < p.stop_min_atr * I.atr[i] or dist > p.stop_max_atr * I.atr[i]:
             self.state = "STRUCTURE"; return                        # sanidad §6
         # TP: extremo estructural previo (§7)
-        sh, sl_ = swings(I.h[:i + 1], I.l[:i + 1], p.k_frac_i, i)
         pool = sl_ if d < 0 else sh
         pool = [v for t, v in pool if t >= i - p.tp_lookback]
         if not pool:

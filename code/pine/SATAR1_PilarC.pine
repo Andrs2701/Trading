@@ -146,7 +146,7 @@ if newD1 and state < 4
     g3s = dErArr >= pErArrive or dRsi >= pRsiExt                // G3 (OR, AMBIG-2)
     // G5 short: envolvente bajista / pinbar alto / doble techo (A3)
     engS = dC < dO and dO >= dC2 and dC < dO2 and math.abs(dC-dO) > math.abs(dC2-dO2)
-    pinS = math.abs(dC-dO) > 0 and (dH - math.max(dO, dC)) >= pPinRatio * math.abs(dC-dO)
+    pinS = math.abs(dC-dO) > 0 and (dH - math.max(dO, dC)) >= pPinRatio * math.abs(dC-dO) and dC <= (dH+dL)/2 + 0.1*(dH-dL)
     dtS  = array.size(zoneH) >= 2 and math.abs(array.get(zoneH, array.size(zoneH)-1) - array.get(zoneH, array.size(zoneH)-2)) <= pDTopTol * dAtr
     g6s  = not (dC > (na(cR) ? 1e18 : cR + w))                  // G6 no invalidado
     if g1 and touchS and g3s and g4 and (engS or pinS or dtS) and g6s
@@ -157,7 +157,7 @@ if newD1 and state < 4
     touchL = not na(cS) and dL >= cS - w and dL <= cS + w
     g3l = dErArr >= pErArrive or dRsi <= 100 - pRsiExt
     engL = dC > dO and dO <= dC2 and dC > dO2 and math.abs(dC-dO) > math.abs(dC2-dO2)
-    pinL = math.abs(dC-dO) > 0 and (math.min(dO, dC) - dL) >= pPinRatio * math.abs(dC-dO)
+    pinL = math.abs(dC-dO) > 0 and (math.min(dO, dC) - dL) >= pPinRatio * math.abs(dC-dO) and dC >= (dH+dL)/2 - 0.1*(dH-dL)
     dtL  = array.size(zoneL) >= 2 and math.abs(array.get(zoneL, array.size(zoneL)-1) - array.get(zoneL, array.size(zoneL)-2)) <= pDTopTol * dAtr
     g6l  = not (dC < (na(cS) ? -1e18 : cS - w))
     if state == 0 and g1 and touchL and g3l and g4 and (engL or pinL or dtL) and g6l
@@ -214,7 +214,8 @@ if trig
     depth = math.abs(px - fImp) / math.abs(oImp - fImp)
     buf   = pBufAtr * iAtr
     sl0   = depth <= 0.618 ? fib(0.75) + (dir < 0 ? buf : -buf)
-                           : fib(1.0)  + (dir < 0 ? buf : -buf)
+                           : (dir < 0 ? math.max(fib(1.0), nz(shI1, fib(1.0))) + buf
+                                      : math.min(fib(1.0), nz(slI1, fib(1.0))) - buf)
     dist  = math.abs(sl0 - close)
     // TP: extremo estructural previo (§7, aproximado con swings H1 confirmados)
     tp    = dir < 0 ? math.min(nz(slI1, low), nz(slI2, low)) : math.max(nz(shI1, high), nz(shI2, high))
