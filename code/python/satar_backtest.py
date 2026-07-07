@@ -118,11 +118,13 @@ def eff_ratio(c, n):
 # ----------------------------------------------------------------------------
 # Estructura: swings (FASE-2 §2.1) y zonas extremas (§2.2)
 # ----------------------------------------------------------------------------
-def swings(h: np.ndarray, l: np.ndarray, k: int, upto: int):
+def swings(h: np.ndarray, l: np.ndarray, k: int, upto: int, start: int = 0):
     """Swings CONFIRMADOS con información disponible en la vela `upto` (incluida).
-    Un swing en t requiere k velas posteriores ⇒ solo t ≤ upto-k."""
+    Un swing en t requiere k velas posteriores ⇒ solo t ≤ upto-k.
+    `start` acota la ventana (rendimiento O(N·W)); los consumidores solo usan
+    los swings recientes, así que el resultado es equivalente."""
     sh, sl = [], []
-    for t in range(k, upto - k + 1):
+    for t in range(max(k, start), upto - k + 1):
         win_h = h[t - k:t + k + 1]; win_l = l[t - k:t + k + 1]
         if h[t] == win_h.max() and (win_h == h[t]).sum() == 1:
             sh.append((t, h[t]))
@@ -218,8 +220,7 @@ class Engine:
         if not (G.er[g] >= p.er_clean and G.adx[g] >= p.adx_clean):        # G1
             return 0
         lo = max(0, g - p.zone_lookback)
-        sh, sl_ = swings(G.h[:g + 1], G.l[:g + 1], p.k_piv_g, g)
-        sh = [(t, v) for t, v in sh if t >= lo]; sl_ = [(t, v) for t, v in sl_ if t >= lo]
+        sh, sl_ = swings(G.h, G.l, p.k_piv_g, g, start=lo)
         w = p.zone_w_atr * G.atr[g]
         for d, piv in ((-1, sh), (+1, sl_)):                               # short en resistencia, long en soporte
             for center, _ in zones(piv, w, p.zone_min_touches):
@@ -264,7 +265,7 @@ class Engine:
                 return True
             if b0 > 0 and (h0 - max(o0, c0)) >= p.pin_ratio * b0 and c0 <= (h0 + l0) / 2 + 0.1 * (h0 - l0):
                 return True
-            sh, _ = swings(G.h[:g + 1], G.l[:g + 1], self.p.k_frac_i, g)
+            sh, _ = swings(G.h, G.l, self.p.k_frac_i, g, start=max(0, g - 150))
             inz = [(t, v) for t, v in sh[-4:] if zlo <= v <= zhi]
             if len(inz) >= 2 and abs(inz[-1][1] - inz[-2][1]) <= p.dtop_tol_atr * G.atr[g]:
                 neck = G.l[inz[-2][0]:inz[-1][0] + 1].min()      # mínimo entre los dos techos
@@ -275,7 +276,7 @@ class Engine:
                 return True
             if b0 > 0 and (min(o0, c0) - l0) >= p.pin_ratio * b0 and c0 >= (h0 + l0) / 2 - 0.1 * (h0 - l0):
                 return True
-            _, sl_ = swings(G.h[:g + 1], G.l[:g + 1], self.p.k_frac_i, g)
+            _, sl_ = swings(G.h, G.l, self.p.k_frac_i, g, start=max(0, g - 150))
             inz = [(t, v) for t, v in sl_[-4:] if zlo <= v <= zhi]
             if len(inz) >= 2 and abs(inz[-1][1] - inz[-2][1]) <= p.dtop_tol_atr * G.atr[g]:
                 neck = G.h[inz[-2][0]:inz[-1][0] + 1].max()      # máximo entre los dos suelos
@@ -290,7 +291,7 @@ class Engine:
             return False
         if not ((I.c[i] < I.ema[i]) if d < 0 else (I.c[i] > I.ema[i])):    # I1
             return False
-        sh, sl_ = swings(I.h[:i + 1], I.l[:i + 1], p.k_frac_i, i)
+        sh, sl_ = swings(I.h, I.l, p.k_frac_i, i, start=max(0, i - 400))
         if d < 0:
             if len(sl_) < 2 or len(sh) < 2:
                 return False
@@ -434,7 +435,7 @@ class Engine:
         p, I, d = self.p, self.I, self.bias
         raw = self.P.o[m + 1]                                       # apertura vela siguiente
         entry = raw * (1 + d * (p.spread_pct / 2 + p.slip_pct))     # fricciones D-3
-        sh, sl_ = swings(I.h[:i + 1], I.l[:i + 1], p.k_frac_i, i)
+        sh, sl_ = swings(I.h, I.l, p.k_frac_i, i, start=max(0, i - 400))
         depth = (abs((self.I.h[i] if d < 0 else self.I.l[i]) - self.f_imp)
                  / abs(self.o_imp - self.f_imp))
         buf = p.buf_atr * I.atr[i]
