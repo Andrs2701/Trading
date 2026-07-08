@@ -42,11 +42,23 @@ class GaussianHMM:
         n_samples, n_features = X.shape
         k = self.n_components
         log_b = np.zeros((n_samples, k))
+        log_2pi = np.log(2.0 * np.pi)
         for i in range(k):
             cov = self.covars_[i]
             cov = 0.5 * (cov + cov.T) + self.min_covar * np.eye(n_features)
-            # Use multivariate_normal logpdf
-            log_b[:, i] = multivariate_normal.logpdf(X, mean=self.means_[i], cov=cov, allow_singular=True)
+            try:
+                L = np.linalg.cholesky(cov)
+                diff = X - self.means_[i]
+                y = np.linalg.solve(L, diff.T)
+                quad_term = np.sum(y**2, axis=0)
+                log_det = 2.0 * np.sum(np.log(np.diag(L)))
+                log_b[:, i] = -0.5 * (n_features * log_2pi + log_det + quad_term)
+            except np.linalg.LinAlgError:
+                diag = np.diag(cov)
+                diff = X - self.means_[i]
+                quad_term = np.sum((diff**2) / diag, axis=1)
+                log_det = np.sum(np.log(diag))
+                log_b[:, i] = -0.5 * (n_features * log_2pi + log_det + quad_term)
         return log_b
 
     def _forward(self, log_b):
@@ -58,8 +70,9 @@ class GaussianHMM:
         
         log_alpha[0] = log_startprob + log_b[0]
         for t in range(1, n_samples):
-            for j in range(k):
-                log_alpha[t, j] = log_b[t, j] + logsumexp(log_alpha[t-1] + log_transmat[:, j])
+            a = log_alpha[t-1][:, np.newaxis] + log_transmat
+            a_max = np.max(a, axis=0)
+            log_alpha[t] = log_b[t] + a_max + np.log(np.sum(np.exp(a - a_max), axis=0))
         return log_alpha
 
     def _backward(self, log_b):
@@ -69,12 +82,14 @@ class GaussianHMM:
         log_transmat = np.log(np.maximum(self.transmat_, 1e-30))
         
         for t in range(n_samples - 2, -1, -1):
-            for i in range(k):
-                log_beta[t, i] = logsumexp(log_transmat[i, :] + log_b[t+1, :] + log_beta[t+1, :])
+            a = log_transmat + log_b[t+1][np.newaxis, :] + log_beta[t+1][np.newaxis, :]
+            a_max = np.max(a, axis=1)
+            log_beta[t] = a_max + np.log(np.sum(np.exp(a - a_max[:, np.newaxis]), axis=1))
         return log_beta
 
     def fit(self, X, lengths=None):
-        self._init_params(X)
+        if self.means_ is None:
+            self._init_params(X)
         
         last_logprob = -np.inf
         for it in range(self.n_iter):
@@ -82,7 +97,9 @@ class GaussianHMM:
             log_alpha = self._forward(log_b)
             log_beta = self._backward(log_b)
             
-            log_prob = logsumexp(log_alpha[-1])
+            a = log_alpha[-1]
+            a_max = np.max(a)
+            log_prob = a_max + np.log(np.sum(np.exp(a - a_max)))
             
             if it > 0 and log_prob - last_logprob < self.tol:
                 break
@@ -90,18 +107,20 @@ class GaussianHMM:
             
             # E-step
             log_gamma = log_alpha + log_beta
-            log_gamma -= logsumexp(log_gamma, axis=1, keepdims=True)
+            log_gamma_max = np.max(log_gamma, axis=1, keepdims=True)
+            log_gamma -= log_gamma_max + np.log(np.sum(np.exp(log_gamma - log_gamma_max), axis=1, keepdims=True))
             gamma = np.exp(log_gamma)
             
             n_samples, k = X.shape[0], self.n_components
             log_transmat = np.log(np.maximum(self.transmat_, 1e-30))
             
-            log_xi = np.zeros((n_samples - 1, k, k))
-            for t in range(n_samples - 1):
-                for i in range(k):
-                    for j in range(k):
-                        log_xi[t, i, j] = log_alpha[t, i] + log_transmat[i, j] + log_b[t+1, j] + log_beta[t+1, j]
-                log_xi[t] -= logsumexp(log_xi[t])
+            # Vectorized computation of log_xi
+            log_xi = (log_alpha[:-1, :, np.newaxis] 
+                      + log_transmat[np.newaxis, :, :] 
+                      + log_b[1:, np.newaxis, :] 
+                      + log_beta[1:, np.newaxis, :])
+            log_xi_max = np.max(log_xi, axis=(1, 2), keepdims=True)
+            log_xi -= log_xi_max + np.log(np.sum(np.exp(log_xi - log_xi_max), axis=(1, 2), keepdims=True))
             xi = np.exp(log_xi)
             
             # M-step
@@ -129,12 +148,15 @@ class GaussianHMM:
     def score(self, X, lengths=None):
         log_b = self._compute_log_likelihoods(X)
         log_alpha = self._forward(log_b)
-        return logsumexp(log_alpha[-1])
+        a = log_alpha[-1]
+        a_max = np.max(a)
+        return a_max + np.log(np.sum(np.exp(a - a_max)))
 
     def predict_proba(self, X, lengths=None):
         log_b = self._compute_log_likelihoods(X)
         log_alpha = self._forward(log_b)
         log_beta = self._backward(log_b)
         log_gamma = log_alpha + log_beta
-        log_gamma -= logsumexp(log_gamma, axis=1, keepdims=True)
+        log_gamma_max = np.max(log_gamma, axis=1, keepdims=True)
+        log_gamma -= log_gamma_max + np.log(np.sum(np.exp(log_gamma - log_gamma_max), axis=1, keepdims=True))
         return np.exp(log_gamma)

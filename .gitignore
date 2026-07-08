@@ -16,6 +16,8 @@ env/
 # Local data outputs
 code/python/trades_out.csv
 *.csv
+# Logs de ejecución de backtests (ruido, no versionar)
+*.log
 
 # OS files
 .DS_Store
