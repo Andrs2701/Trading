@@ -186,11 +186,14 @@ class Trade:
     sl0: float = 0.0; tp: float = 0.0; qty: float = 0.0
     sl_init: float = 0.0    # stop inicial (sl0 se actualiza con el trailing)
     t_exit: int = 0; exit: float = 0.0; reason: str = ""; pnl: float = 0.0; r: float = 0.0
+    mfe_pct: float = 0.0; mae_pct: float = 0.0
+    mfe_r: float = 0.0; mae_r: float = 0.0
+    duration_m5: int = 0
 
 
 class Engine:
     def __init__(self, m5: pd.DataFrame, p: Params, symbol: str = "SYM",
-                 equity0: float = 10_000.0, hmm_mult=None):
+                 equity0: float = 10_000.0, hmm_mult=None, funnel: bool = False):
         self.p, self.symbol = p, symbol
         self.m5df = m5
         self.P = TF(m5, p)
@@ -211,17 +214,74 @@ class Engine:
         self.trades: list[Trade] = []; self.ecurve = []
         self.day_pnl = {}; self.week_pnl = {}; self.month_pnl = {}
         self.day_start_equity = {}; self.week_start_equity = {}; self.month_start_equity = {}
+        
+        self.pos_max_fav = 0.0
+        self.pos_max_adv = 0.0
+        self.pos_entry_m = 0
+        
+        self.funnel_active = funnel
+        if self.funnel_active:
+            self.funnel_counters = {
+                "g_eval": 0,
+                "g1_pass": 0,
+                "g2_touch": 0,
+                "g3_arrive": 0,
+                "g4_decel": 0,
+                "g5_pattern": 0,
+                "g5_pattern_engulfing": 0,
+                "g5_pattern_pinbar": 0,
+                "g5_pattern_double_top": 0,
+                "g6_valid": 0,
+                "i1_ema": 0,
+                "i2_bos": 0,
+                "i3_swings": 0,
+                "i4_fib_reach": 0,
+                "i5_antichase": 0,
+                "i6_expired": 0,
+                "i7_invalidated": 0,
+                "trigger_fired": 0,
+                "reject_stop_dist": 0,
+                "reject_tp_pool": 0,
+                "reject_rr_min": 0,
+                "reject_killswitch": 0,
+                "entered": 0
+            }
 
     # ---------------- módulo G (FASE-2 §3) ----------------
+    def _accumulate_g_counters(self, g2, g3, g4, g5, g6, engulfing, pinbar, dtop):
+        if g2: self.funnel_counters['g2_touch'] += 1
+        if g3: self.funnel_counters['g3_arrive'] += 1
+        if g4: self.funnel_counters['g4_decel'] += 1
+        if g5: self.funnel_counters['g5_pattern'] += 1
+        if engulfing: self.funnel_counters['g5_pattern_engulfing'] += 1
+        if pinbar: self.funnel_counters['g5_pattern_pinbar'] += 1
+        if dtop: self.funnel_counters['g5_pattern_double_top'] += 1
+        if g6: self.funnel_counters['g6_valid'] += 1
+
     def _bias_check(self, g: int) -> int:
         p, G = self.p, self.G
         if g < max(p.er_n, p.zone_lookback // 4, p.adx_n * 2):
             return 0
-        if not (G.er[g] >= p.er_clean and G.adx[g] >= p.adx_clean):        # G1
+        if self.funnel_active:
+            self.funnel_counters['g_eval'] += 1
+        g1_passed = G.er[g] >= p.er_clean and G.adx[g] >= p.adx_clean
+        if self.funnel_active and g1_passed:
+            self.funnel_counters['g1_pass'] += 1
+        if not g1_passed:        # G1
             return 0
         lo = max(0, g - p.zone_lookback)
         sh, sl_ = swings(G.h, G.l, p.k_piv_g, g, start=lo)
         w = p.zone_w_atr * G.atr[g]
+        
+        local_g2 = False
+        local_g3 = False
+        local_g4 = False
+        local_g5 = False
+        local_g6 = False
+        local_g5_engulfing = False
+        local_g5_pinbar = False
+        local_g5_double_top = False
+
         for d, piv in ((-1, sh), (+1, sl_)):                               # short en resistencia, long en soporte
             for center, _ in zones(piv, w, p.zone_min_touches):
                 zlo, zhi = center - w, center + w
@@ -231,82 +291,119 @@ class Engine:
                     px = G.h[j] if d < 0 else G.l[j]
                     if zlo <= px <= zhi:
                         touched = j
-                if touched is None:
+                if touched is not None:
+                    local_g2 = True
+                else:
                     continue
                 # G3: llegada acelerada (OR, AMBIG-2)
                 seg = G.c[max(0, touched - p.arrive_n):touched + 1]
                 den = np.abs(np.diff(seg)).sum()
                 er_seg = abs(seg[-1] - seg[0]) / den if den > 0 else 0.0
                 rsi_ok = G.rsi[touched] >= p.rsi_extreme if d < 0 else G.rsi[touched] <= 100 - p.rsi_extreme
-                if not (er_seg >= p.er_arrive or rsi_ok):
+                if er_seg >= p.er_arrive or rsi_ok:
+                    local_g3 = True
+                else:
                     continue
                 # G4: desaceleración (D-2)
                 body = np.abs(G.c[g - 2:g + 1] - G.o[g - 2:g + 1]).mean()
-                if not (G.atr10[g] > 0 and body / G.atr10[g] <= p.decel_max):
+                if G.atr10[g] > 0 and body / G.atr10[g] <= p.decel_max:
+                    local_g4 = True
+                else:
                     continue
                 # G5: patrón de giro (uno de tres)
-                if not self._reversal_pattern(g, d, zlo, zhi):
+                pattern = self._reversal_pattern(g, d, zlo, zhi)
+                if pattern:
+                    local_g5 = True
+                    if pattern == "engulfing":
+                        local_g5_engulfing = True
+                    elif pattern == "pinbar":
+                        local_g5_pinbar = True
+                    elif pattern == "double_top":
+                        local_g5_double_top = True
+                else:
                     continue
                 # G6: no invalidado (cierre confirmado fuera de la zona)
                 brk = (G.c[g] > zhi and G.c[g - 1] > zhi) if d < 0 else (G.c[g] < zlo and G.c[g - 1] < zlo)
                 if brk:
                     continue
+                local_g6 = True
                 self._zone = (zlo, zhi)
+                if self.funnel_active:
+                    self._accumulate_g_counters(local_g2, local_g3, local_g4, local_g5, local_g6,
+                                                local_g5_engulfing, local_g5_pinbar, local_g5_double_top)
                 return d
+        if self.funnel_active:
+            self._accumulate_g_counters(local_g2, local_g3, local_g4, local_g5, local_g6,
+                                        local_g5_engulfing, local_g5_pinbar, local_g5_double_top)
         return 0
 
-    def _reversal_pattern(self, g, d, zlo, zhi) -> bool:
+    def _reversal_pattern(self, g, d, zlo, zhi) -> str | None:
         p, G = self.p, self.G
         o1, c1, o0, c0 = G.o[g - 1], G.c[g - 1], G.o[g], G.c[g]
         h0, l0 = G.h[g], G.l[g]
         b0, b1 = abs(c0 - o0), abs(c1 - o1)
         if d < 0:  # short: envolvente bajista / pinbar alto / doble techo
             if c0 < o0 and o0 >= c1 and c0 < o1 and b0 > b1:
-                return True
+                return "engulfing"
             if b0 > 0 and (h0 - max(o0, c0)) >= p.pin_ratio * b0 and c0 <= (h0 + l0) / 2 + 0.1 * (h0 - l0):
-                return True
+                return "pinbar"
             sh, _ = swings(G.h, G.l, self.p.k_frac_i, g, start=max(0, g - 150))
             inz = [(t, v) for t, v in sh[-4:] if zlo <= v <= zhi]
             if len(inz) >= 2 and abs(inz[-1][1] - inz[-2][1]) <= p.dtop_tol_atr * G.atr[g]:
                 neck = G.l[inz[-2][0]:inz[-1][0] + 1].min()      # mínimo entre los dos techos
                 if c0 < neck:                                     # G5c: cierre bajo el neckline
-                    return True
+                    return "double_top"
         else:      # long simétrico
             if c0 > o0 and o0 <= c1 and c0 > o1 and b0 > b1:
-                return True
+                return "engulfing"
             if b0 > 0 and (min(o0, c0) - l0) >= p.pin_ratio * b0 and c0 >= (h0 + l0) / 2 - 0.1 * (h0 - l0):
-                return True
+                return "pinbar"
             _, sl_ = swings(G.h, G.l, self.p.k_frac_i, g, start=max(0, g - 150))
             inz = [(t, v) for t, v in sl_[-4:] if zlo <= v <= zhi]
             if len(inz) >= 2 and abs(inz[-1][1] - inz[-2][1]) <= p.dtop_tol_atr * G.atr[g]:
                 neck = G.h[inz[-2][0]:inz[-1][0] + 1].max()      # máximo entre los dos suelos
                 if c0 > neck:                                     # G5c: cierre sobre el neckline
-                    return True
-        return False
+                    return "double_top"
+        return None
 
     # ---------------- módulo I (FASE-2 §4) ----------------
     def _structure_check(self, i: int) -> bool:
         p, I, d = self.p, self.I, self.bias
         if i < p.ema_n or np.isnan(I.ema[i]):
             return False
-        if not ((I.c[i] < I.ema[i]) if d < 0 else (I.c[i] > I.ema[i])):    # I1
+        i1_passed = (I.c[i] < I.ema[i]) if d < 0 else (I.c[i] > I.ema[i])
+        if self.funnel_active and i1_passed:
+            self.funnel_counters['i1_ema'] += 1
+        if not i1_passed:    # I1
             return False
         sh, sl_ = swings(I.h, I.l, p.k_frac_i, i, start=max(0, i - 400))
         if d < 0:
             if len(sl_) < 2 or len(sh) < 2:
                 return False
-            if not (I.c[i] < sl_[-1][1]):                                  # I2 BOS
+            i2_passed = I.c[i] < sl_[-1][1]
+            if self.funnel_active and i2_passed:
+                self.funnel_counters['i2_bos'] += 1
+            if not i2_passed:                                  # I2 BOS
                 return False
-            if not (sh[-1][1] < sh[-2][1]):                                # I3 máx decrecientes
+            i3_passed = sh[-1][1] < sh[-2][1]
+            if self.funnel_active and i3_passed:
+                self.funnel_counters['i3_swings'] += 1
+            if not i3_passed:                                # I3 máx decrecientes
                 return False
             self.o_imp = sh[-1][1]
             self.f_imp = I.l[max(0, i - 20):i + 1].min()
         else:
             if len(sh) < 2 or len(sl_) < 2:
                 return False
-            if not (I.c[i] > sh[-1][1]):
+            i2_passed = I.c[i] > sh[-1][1]
+            if self.funnel_active and i2_passed:
+                self.funnel_counters['i2_bos'] += 1
+            if not i2_passed:
                 return False
-            if not (sl_[-1][1] > sl_[-2][1]):
+            i3_passed = sl_[-1][1] > sl_[-2][1]
+            if self.funnel_active and i3_passed:
+                self.funnel_counters['i3_swings'] += 1
+            if not i3_passed:
                 return False
             self.o_imp = sl_[-1][1]
             self.f_imp = I.h[max(0, i - 20):i + 1].max()
@@ -326,14 +423,22 @@ class Engine:
             self.f_imp = I.h[i]
         px = I.h[i] if d < 0 else I.l[i]
         reach = px >= self._fib(0.382) if d < 0 else px <= self._fib(0.382)  # I4
+        if self.funnel_active and reach:
+            self.funnel_counters['i4_fib_reach'] += 1
         if not reach:
             return False
         dist = abs(px - I.ema[i])                                            # I5 anti-chase (D-5)
         touched_ema = (px >= I.ema[i]) if d < 0 else (px <= I.ema[i])
-        if not (touched_ema or dist <= p.chase_atr * I.atr[i]):
+        antichase = touched_ema or dist <= p.chase_atr * I.atr[i]
+        if self.funnel_active and antichase:
+            self.funnel_counters['i5_antichase'] += 1
+        if not antichase:
             return False
         # I7 invalidación
-        if (I.c[i] > self._fib(1.0)) if d < 0 else (I.c[i] < self._fib(1.0)):
+        invalidated = (I.c[i] > self._fib(1.0)) if d < 0 else (I.c[i] < self._fib(1.0))
+        if invalidated:
+            if self.funnel_active:
+                self.funnel_counters['i7_invalidated'] += 1
             self.state = "IDLE"; self.bias = 0
             return False
         return True
@@ -416,14 +521,24 @@ class Engine:
                     if not self._zone_check(i) and self.state == "IDLE":
                         pass                                                 # invalidado en zone_check
                     elif i - self.armed_i_idx > p.armed_window:              # I6 expiración
+                        if self.funnel_active:
+                            self.funnel_counters['i6_expired'] += 1
                         self.state = "STRUCTURE"
             # --- cierre de vela P: gatillo ---
             if self.state == "ARMED" and self.pos is None and self._trigger(m):
-                if not self._kill_switch(ts) and (self.hmm_mult is None or self.hmm_mult(g) > 0):
+                if self.funnel_active:
+                    self.funnel_counters['trigger_fired'] += 1
+                killswitch_active = self._kill_switch(ts)
+                if killswitch_active:
+                    if self.funnel_active:
+                        self.funnel_counters['reject_killswitch'] += 1
+                if not killswitch_active and (self.hmm_mult is None or self.hmm_mult(g) > 0):
                     self._enter(m, i, g)
             self.ecurve.append((ts, self.equity + self._open_pnl(m)))
         if self.pos:                                                          # cierre forzado al final
             self._exit(self.P.n - 1, self.P.c[-1], "eod")
+        if self.funnel_active:
+            self.save_and_print_funnel()
         return self.metrics()
 
     def _open_pnl(self, m):
@@ -451,15 +566,21 @@ class Engine:
                 sl0 = min(ext, last_sl) - buf
         dist = abs(sl0 - entry)
         if dist < p.stop_min_atr * I.atr[i] or dist > p.stop_max_atr * I.atr[i]:
+            if self.funnel_active:
+                self.funnel_counters['reject_stop_dist'] += 1
             self.state = "STRUCTURE"; return                        # sanidad §6
         # TP: extremo estructural previo (§7)
         pool = sl_ if d < 0 else sh
         pool = [v for t, v in pool if t >= i - p.tp_lookback]
         if not pool:
+            if self.funnel_active:
+                self.funnel_counters['reject_tp_pool'] += 1
             self.state = "STRUCTURE"; return
         tp = min(pool) if d < 0 else max(pool)
         rr = abs(entry - tp) / dist
         if rr < p.rr_min:
+            if self.funnel_active:
+                self.funnel_counters['reject_rr_min'] += 1
             self.state = "STRUCTURE"; return
         mult = self.hmm_mult(g) if self.hmm_mult else 1.0           # Pilar B §11
         qty = (p.risk_pct * mult * self.equity) / dist
@@ -467,12 +588,30 @@ class Engine:
         fee = entry * qty * p.fee_pct
         self.pos = Trade(self.symbol, d, self.P.t[m + 1], entry, sl0, tp, qty, sl_init=sl0)
         self.pos.pnl -= fee
+        
+        self.pos_max_fav = 0.0
+        self.pos_max_adv = 0.0
+        self.pos_entry_m = m + 1
+        
+        if self.funnel_active:
+            self.funnel_counters['entered'] += 1
         self.state = "IN_POSITION"
 
     def _manage(self, m, i, last_i):
         """Trailing al cierre de vela de la TF de gestión (D-6/P36) + stops intravela."""
         p, pos = self.p, self.pos
         d = pos.direction
+        
+        h_m5, l_m5 = self.P.h[m], self.P.l[m]
+        if d > 0:
+            fav = h_m5 - pos.entry
+            adv = pos.entry - l_m5
+        else:
+            fav = pos.entry - l_m5
+            adv = h_m5 - pos.entry
+        self.pos_max_fav = max(getattr(self, 'pos_max_fav', 0.0), fav)
+        self.pos_max_adv = max(getattr(self, 'pos_max_adv', 0.0), adv)
+
         # trailing al cierre de vela de gestión
         if p.trail_tf == "I":
             if i != last_i and i >= 0 and not np.isnan(self.I.ema[i]):
@@ -502,6 +641,26 @@ class Engine:
         pos.pnl += gross - fee
         pos.t_exit, pos.exit, pos.reason = int(self.P.t[m]), px, reason
         pos.r = pos.pnl / (p.risk_pct * self.equity) if self.equity > 0 else 0.0
+        
+        h_m5, l_m5 = self.P.h[m], self.P.l[m]
+        if pos.direction > 0:
+            fav = h_m5 - pos.entry
+            adv = pos.entry - l_m5
+        else:
+            fav = pos.entry - l_m5
+            adv = h_m5 - pos.entry
+        self.pos_max_fav = max(getattr(self, 'pos_max_fav', 0.0), fav)
+        self.pos_max_adv = max(getattr(self, 'pos_max_adv', 0.0), adv)
+        
+        pos.mfe_pct = self.pos_max_fav / pos.entry
+        pos.mae_pct = self.pos_max_adv / pos.entry
+        
+        risk_dist = abs(pos.entry - pos.sl_init)
+        pos.mfe_r = self.pos_max_fav / risk_dist if risk_dist > 0 else 0.0
+        pos.mae_r = self.pos_max_adv / risk_dist if risk_dist > 0 else 0.0
+        
+        pos.duration_m5 = m - getattr(self, 'pos_entry_m', m) + 1
+        
         self.equity += pos.pnl
         self._book_pnl(pos.t_exit, pos.pnl)
         self.trades.append(pos)
@@ -539,6 +698,145 @@ class Engine:
             "trades_por_año": round(len(tr) / years, 1),
             "racha_max": streaks,
         }
+
+    def save_and_print_funnel(self):
+        import os
+        exits_info = {}
+        for reason in ["stop", "tp", "eod"]:
+            trades_reason = [t for t in self.trades if t.reason == reason]
+            count = len(trades_reason)
+            if count > 0:
+                total_r = sum(t.r for t in trades_reason)
+                avg_r = total_r / count
+                avg_duration = sum(t.duration_m5 for t in trades_reason) / count
+            else:
+                total_r = 0.0
+                avg_r = 0.0
+                avg_duration = 0.0
+            exits_info[reason] = {
+                "count": count,
+                "total_r": round(total_r, 4),
+                "avg_r": round(avg_r, 4),
+                "avg_duration_m5": round(avg_duration, 2)
+            }
+        
+        all_mfe_pct = [t.mfe_pct for t in self.trades]
+        all_mae_pct = [t.mae_pct for t in self.trades]
+        all_mfe_r = [t.mfe_r for t in self.trades]
+        all_mae_r = [t.mae_r for t in self.trades]
+        
+        mfe_mae_summary = {
+            "avg_mfe_pct": round(float(np.mean(all_mfe_pct)), 6) if all_mfe_pct else 0.0,
+            "avg_mae_pct": round(float(np.mean(all_mae_pct)), 6) if all_mae_pct else 0.0,
+            "avg_mfe_r": round(float(np.mean(all_mfe_r)), 4) if all_mfe_r else 0.0,
+            "avg_mae_r": round(float(np.mean(all_mae_r)), 4) if all_mae_r else 0.0,
+            "max_mfe_r": round(float(np.max(all_mfe_r)), 4) if all_mfe_r else 0.0,
+            "max_mae_r": round(float(np.max(all_mae_r)), 4) if all_mae_r else 0.0,
+        }
+        
+        funnel_data = {
+            "symbol": self.symbol,
+            "counters": self.funnel_counters,
+            "exits": exits_info,
+            "mfe_mae_summary": mfe_mae_summary,
+            "trades": [
+                {
+                    "t_entry": int(t.t_entry),
+                    "t_exit": int(t.t_exit),
+                    "direction": t.direction,
+                    "entry": round(t.entry, 4),
+                    "exit": round(t.exit, 4),
+                    "reason": t.reason,
+                    "pnl": round(t.pnl, 4),
+                    "r": round(t.r, 4),
+                    "duration_m5": t.duration_m5,
+                    "mfe_pct": round(t.mfe_pct, 6),
+                    "mae_pct": round(t.mae_pct, 6),
+                    "mfe_r": round(t.mfe_r, 4),
+                    "mae_r": round(t.mae_r, 4)
+                } for t in self.trades
+            ]
+        }
+        
+        # Guardar en archivo JSON
+        results_dir = "C:/Users/camilo.chitiva/Trading/code/python/results"
+        os.makedirs(results_dir, exist_ok=True)
+        filepath = os.path.join(results_dir, f"funnel_{self.symbol}.json")
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(funnel_data, f, indent=2, ensure_ascii=False)
+        print(f"\n[funnel] Datos del embudo guardados en: {filepath}")
+        
+        # Imprimir tabla ordenada y legible en consola
+        fc = self.funnel_counters
+        g_eval = fc.get("g_eval", 0)
+        g1 = fc.get("g1_pass", 0)
+        g2 = fc.get("g2_touch", 0)
+        g3 = fc.get("g3_arrive", 0)
+        g4 = fc.get("g4_decel", 0)
+        g5 = fc.get("g5_pattern", 0)
+        g6 = fc.get("g6_valid", 0)
+        
+        i1 = fc.get("i1_ema", 0)
+        i2 = fc.get("i2_bos", 0)
+        i3 = fc.get("i3_swings", 0)
+        i4 = fc.get("i4_fib_reach", 0)
+        i5 = fc.get("i5_antichase", 0)
+        
+        tr_fired = fc.get("trigger_fired", 0)
+        entered = fc.get("entered", 0)
+        
+        pct_g1 = (g1 / g_eval * 100) if g_eval > 0 else 0.0
+        pct_g2 = (g2 / g1 * 100) if g1 > 0 else 0.0
+        pct_g3 = (g3 / g2 * 100) if g2 > 0 else 0.0
+        pct_g4 = (g4 / g3 * 100) if g3 > 0 else 0.0
+        pct_g5 = (g5 / g4 * 100) if g4 > 0 else 0.0
+        pct_g6 = (g6 / g5 * 100) if g5 > 0 else 0.0
+        
+        pct_i2 = (i2 / i1 * 100) if i1 > 0 else 0.0
+        pct_i3 = (i3 / i2 * 100) if i2 > 0 else 0.0
+        pct_i4 = (i4 / i3 * 100) if i3 > 0 else 0.0
+        pct_i5 = (i5 / i4 * 100) if i4 > 0 else 0.0
+        
+        pct_entered = (entered / tr_fired * 100) if tr_fired > 0 else 0.0
+        
+        print("\n" + "="*65)
+        print(f"SATAR-1 EMBUDO DE FILTROS (Símbolo: {self.symbol})")
+        print("="*65)
+        print("MÓDULO G (Filtros Diarios de Bias):")
+        print(f"  g_eval (Velas G Evaluadas):               {g_eval}")
+        print(f"  g1_pass (Eficiencia y ADX):               {g1} ({pct_g1:.1f}% de eval)")
+        print(f"  g2_touch (Toque Zona Extrema):            {g2} ({pct_g2:.1f}% de G1)")
+        print(f"  g3_arrive (Llegada Acelerada):            {g3} ({pct_g3:.1f}% de G2)")
+        print(f"  g4_decel (Desaceleración Máxima):         {g4} ({pct_g4:.1f}% de G3)")
+        print(f"  g5_pattern (Patrón de Giro):              {g5} ({pct_g5:.1f}% de G4)")
+        print(f"    - engulfing (Envolvente):               {fc.get('g5_pattern_engulfing', 0)}")
+        print(f"    - pinbar:                               {fc.get('g5_pattern_pinbar', 0)}")
+        print(f"    - double_top (Doble Techo/Suelo):       {fc.get('g5_pattern_double_top', 0)}")
+        print(f"  g6_valid (No Cierre Fuera - Bias OK):     {g6} ({pct_g6:.1f}% de G5)")
+        print("-"*65)
+        print("MÓDULO I (Estructura en H1):")
+        print(f"  i1_ema (Tendencia EMA H1):                {i1}")
+        print(f"  i2_bos (Ruptura de Estructura BOS):       {i2} ({pct_i2:.1f}% de I1)")
+        print(f"  i3_swings (Swings de Estructura):         {i3} ({pct_i3:.1f}% de BOS)")
+        print(f"  i4_fib_reach (Entrada a Zona Fib 0.382):  {i4} ({pct_i4:.1f}% de swings)")
+        print(f"  i5_antichase (Anti-chase):                {i5} ({pct_i5:.1f}% de Fib)")
+        print(f"  i6_expired (Expiración Temporal):         {fc.get('i6_expired', 0)}")
+        print(f"  i7_invalidated (Invalidación Fib 1.0):    {fc.get('i7_invalidated', 0)}")
+        print("-"*65)
+        print("GATILLO Y SANIDAD DE ENTRADA (M5):")
+        print(f"  trigger_fired (Cruce EMA M5):             {tr_fired}")
+        print(f"  reject_stop_dist (Filtro Distancia Stop): {fc.get('reject_stop_dist', 0)}")
+        print(f"  reject_tp_pool (Sin Pivotes TP):          {fc.get('reject_tp_pool', 0)}")
+        print(f"  reject_rr_min (R:R Mínimo Insuficiente):  {fc.get('reject_rr_min', 0)}")
+        print(f"  reject_killswitch (Killswitch Activo):    {fc.get('reject_killswitch', 0)}")
+        print(f"  entered (Trades Abiertos):                {entered} ({pct_entered:.1f}% de triggers)")
+        print("-"*65)
+        print("DISTRIBUCIÓN DE SALIDAS Y MÉTRICAS DE RIESGO:")
+        for r_name, info in exits_info.items():
+            print(f"  {r_name:<6}: {info['count']:>3} trades | Prom. R: {info['avg_r']:>6.2f} R | Total R: {info['total_r']:>7.2f} R | Prom. Duración: {info['avg_duration_m5']:>6.1f} velas M5")
+        print(f"  MFE Promedio: {mfe_mae_summary['avg_mfe_r']:.2f} R ({mfe_mae_summary['avg_mfe_pct']*100:.3f}%) | MAE Promedio: {mfe_mae_summary['avg_mae_r']:.2f} R ({mfe_mae_summary['avg_mae_pct']*100:.3f}%)")
+        print(f"  MFE Máximo:   {mfe_mae_summary['max_mfe_r']:.2f} R | MAE Máximo:   {mfe_mae_summary['max_mae_r']:.2f} R")
+        print("="*65 + "\n")
 
 
 # ----------------------------------------------------------------------------
@@ -610,6 +908,7 @@ def main():
     ap.add_argument("--csv", type=str, help="CSV M5 con columnas timestamp,open,high,low,close,volume")
     ap.add_argument("--hmm", action="store_true", help="activar Pilar B (requiere hmmlearn)")
     ap.add_argument("--trail", choices=["I", "P"], default="I", help="P36: TF del trailing")
+    ap.add_argument("--funnel", action="store_true", help="activar instrumentación de embudo no invasiva")
     args = ap.parse_args()
     if args.smoke:
         df = synthetic_m5()
@@ -621,8 +920,18 @@ def main():
     else:
         ap.print_help(); sys.exit(1)
     p = Params(trail_tf=args.trail)
+    
+    # Extraer símbolo del nombre de archivo CSV para el guardado de datos de funnel
+    symbol = "SYM"
+    if args.csv:
+        import os
+        base = os.path.basename(args.csv)
+        symbol = base.split("_")[0].upper()
+    elif args.smoke:
+        symbol = "SMOKE"
+        
     hmm = make_hmm_mult(resample(df, "1D")) if args.hmm else None
-    eng = Engine(df, p, hmm_mult=hmm)
+    eng = Engine(df, p, symbol=symbol, hmm_mult=hmm, funnel=args.funnel)
     res = eng.run()
     print(json.dumps(res, indent=2, ensure_ascii=False))
     if eng.trades:
