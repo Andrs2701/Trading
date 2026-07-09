@@ -92,9 +92,16 @@ def _init_worker(assets):
 def run_window(df: pd.DataFrame, params: Params, win_start: pd.Timestamp,
                win_end: pd.Timestamp, symbol: str) -> list:
     """Corre el motor con warm-up previo y devuelve SOLO los trades cuya entrada
-    cae dentro de [win_start, win_end). Causal ⇒ sin look-ahead."""
+    cae dentro de [win_start, win_end). Causal ⇒ sin look-ahead.
+
+    IMPORTANTE: df.loc[lo:win_end] en pandas INCLUYE el extremo win_end (a
+    diferencia de slicing normal de Python). Para folds cuyo win_end coincide
+    con HOLDOUT_START (p.ej. OOS de F3), eso filtraría una vela que técnicamente
+    pertenece al holdout hacia el cálculo de indicadores. Se usa máscara estricta
+    [lo, win_end) para que el holdout jamás se lea, ni siquiera para warm-up."""
     lo = win_start - pd.Timedelta(days=WARMUP_DAYS)
-    sub = df.loc[lo:win_end]
+    mask = (df.index >= lo) & (df.index < win_end)
+    sub = df.loc[mask]
     if len(sub) < 5000:                      # ventana sin datos suficientes
         return []
     eng = Engine(sub, params, symbol=symbol, equity0=EQUITY0)
@@ -104,10 +111,18 @@ def run_window(df: pd.DataFrame, params: Params, win_start: pd.Timestamp,
 
 
 def objective(trades: list) -> tuple[float, dict]:
-    """obj = E_R · sqrt(N) / (1 + |DD|·5). Devuelve (obj, métricas)."""
+    """obj = E_R · sqrt(N) / (1 + |DD|·5). Devuelve (obj, métricas).
+
+    Los trades se ordenan por t_entry antes del cumsum: eval_combo() concatena
+    los trades activo por activo (todo BTC, luego todo ETH, ...), y el max
+    drawdown de una curva de equity es path-dependent — sin este orden cronológico
+    las rachas perdedoras simultáneas entre activos correlacionados (cripto) se
+    dispersan artificialmente y el DD queda subestimado, corrompiendo el único
+    término de riesgo del objetivo."""
     n = len(trades)
     if n < MIN_TRADES:
         return -999.0, {"trades": n, "expectancy_R": 0.0, "max_dd": 0.0, "win_rate": 0.0}
+    trades = sorted(trades, key=lambda t: t.t_entry)
     r = np.array([t.r for t in trades], dtype=float)
     E_R = float(r.mean())
     # equity en R tratando 1R = 1% de una cuenta compartida (escala-libre, aditivo)
@@ -204,16 +219,23 @@ def run_wfo(grid_name: str, jobs: int, assets: list) -> dict:
               f"E_R={best_is_m['expectancy_R']}) | OOS obj={oos_obj:.4f} "
               f"(N={oos_m['trades']}, E_R={oos_m['expectancy_R']}) | best={best_ov} | {fold_res['elapsed_s']}s")
 
-    # WFE
+    # WFE — el ratio SOLO es interpretable cuando la config es rentable IS y OOS.
+    # mean_oos/mean_is con ambos negativos da un ratio POSITIVO engañoso (dos
+    # negativos entre sí), y cuanto peor degrada OOS, MAYOR sale el WFE — el
+    # caso exacto que este gate debe rechazar. Se evalúa primero rentabilidad,
+    # el WFE numérico solo se usa como umbral de calidad cuando ambos son >0.
     mean_is = float(np.mean(is_objs)) if is_objs else 0.0
     mean_oos = float(np.mean(oos_objs)) if oos_objs else 0.0
-    wfe = mean_oos / mean_is if mean_is != 0 else 0.0
-    results["wfe"] = round(wfe, 4)
+    wfe = mean_oos / mean_is if mean_is > 0 else None
     results["mean_is_obj"] = round(mean_is, 4)
     results["mean_oos_obj"] = round(mean_oos, 4)
+    results["wfe"] = round(wfe, 4) if wfe is not None else None
 
-    # veredicto WFE
-    if wfe >= 0.7:
+    if mean_is <= 0:
+        verdict = "NO RENTABLE IN-SAMPLE (mean_is<=0) — WFE no interpretable; la mejor config IS ya pierde dinero, ni siquiera aplica evaluar degradación OOS"
+    elif mean_oos <= 0:
+        verdict = f"NO RENTABLE OOS (mean_oos={mean_oos:.4f}<=0) — la config optimizada IS pierde dinero fuera de muestra, independientemente del WFE numérico"
+    elif wfe >= 0.7:
         verdict = "BUENO (WFE>=0.7)"
     elif wfe >= 0.5:
         verdict = "ACEPTABLE (WFE>=0.5)"
@@ -222,11 +244,14 @@ def run_wfo(grid_name: str, jobs: int, assets: list) -> dict:
     else:
         verdict = "SOBREOPTIMIZACION (WFE<0.4)"
     results["wfe_verdict"] = verdict
+    results["rentable_is"] = bool(mean_is > 0)
+    results["rentable_oos"] = bool(mean_oos > 0)
 
     # combo recomendado = el más frecuente / el del último fold (más historia IS)
     results["config_congelada"] = results["folds"][-1]["best_overrides"]
 
-    print(f"\n[WFO] WFE = {wfe:.4f} -> {verdict}")
+    wfe_str = f"{wfe:.4f}" if wfe is not None else "N/A"
+    print(f"\n[WFO] WFE = {wfe_str} -> {verdict}")
     print(f"[WFO] mean IS obj={mean_is:.4f} | mean OOS obj={mean_oos:.4f}")
     print(f"[WFO] config congelada (para holdout/Fase E): {results['config_congelada']}")
     return results
