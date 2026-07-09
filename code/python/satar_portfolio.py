@@ -41,23 +41,25 @@ def calculate_metrics(trades_df: pd.DataFrame, name: str = "Portfolio") -> dict:
     equity_curve = EQUITY0 + np.cumsum(pnl)
     peak = np.maximum.accumulate(equity_curve)
     dd = (equity_curve - peak) / peak          # peak siempre >= EQUITY0 > 0
+    dollar_dd = equity_curve - peak            # drawdown en USD, contemporáneo a cada punto
+    max_dollar_dd = float(-dollar_dd.min())    # >= 0
     equity_final = float(equity_curve[-1])
 
     # Años reales a partir de los timestamps de los trades (t_entry .. t_exit en epoch s)
     if 't_entry' in tr.columns and 't_exit' in tr.columns and len(tr) > 0:
         t0 = float(tr['t_entry'].min())
         t1 = float(tr['t_exit'].max())
-        years = max((t1 - t0) / 31_557_600.0, 1e-9)   # segundos por año juliano
+        years = max((t1 - t0) / 31_557_600.0, 1.0 / 365.0)   # segundos por año juliano; piso de 1 día
     else:
         years = max(1.0, len(tr) / 5.7)               # fallback: ~5.7 trades/año (BTC)
 
-    # Retornos por-trade para Sharpe/Sortino (proxy; no anualizado por día real)
+    # Retornos por-trade para Sharpe/Sortino (proxy; anualizado por trades/año real, no por N total)
     try:
         rets = np.diff(equity_curve, prepend=EQUITY0) / np.concatenate([[EQUITY0], equity_curve[:-1]])
         rets = rets[np.isfinite(rets)]
-        sharpe = float(rets.mean() / rets.std() * math.sqrt(len(rets))) if len(rets) > 2 and rets.std() > 0 else 0.0
+        sharpe = float(rets.mean() / rets.std() * math.sqrt(len(tr) / years)) if len(rets) > 2 and rets.std() > 0 else 0.0
         dnn = rets[rets < 0]
-        sortino = float(rets.mean() / dnn.std() * math.sqrt(len(rets))) if len(dnn) > 2 and dnn.std() > 0 else 0.0
+        sortino = float(rets.mean() / dnn.std() * math.sqrt(len(tr) / years)) if len(dnn) > 2 and dnn.std() > 0 else 0.0
     except Exception:
         sharpe = sortino = 0.0
 
@@ -80,7 +82,7 @@ def calculate_metrics(trades_df: pd.DataFrame, name: str = "Portfolio") -> dict:
         "expectancy_usd": round(float(pnl.mean()), 2),
         "expectancy_R": round(float(np.mean([t for t in tr['r']])) if 'r' in tr.columns else 0, 3),
         "max_drawdown": round(float(dd.min()), 4),
-        "recovery_factor": round(float((equity_final - EQUITY0) / abs(dd.min() * peak.max())) if dd.min() < 0 else float("inf"), 2),
+        "recovery_factor": round(float((equity_final - EQUITY0) / max_dollar_dd) if max_dollar_dd > 0 else float("inf"), 2),
         "sharpe": round(sharpe, 2),
         "sortino": round(sortino, 2),
         "cagr": round(cagr, 4),
