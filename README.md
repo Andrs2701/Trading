@@ -41,12 +41,16 @@ Ruta de pruebas completa: `docs/informe_validacion_y_pruebas.md` §3.
 Reglas duras: no dinero real sin aprobar Fase 5 (robustez) y Fase 9 (demo 90 días,
 PF>1.5 · DD<10% · expectancy>0 · **≥150 trades** · consistencia mensual).
 
-## Estado (2026-07-07)
+## Estado (2026-07-09)
 
-Fases 0–3 y 6–10 completas (documentación + código). Fase 4 con **primer backtest real
-ejecutado** (BTCUSDT, 6.5 años, 685k velas M5) — resultado negativo (WR 16.2% vs. 57%
-declarado); ver diagnóstico y próximos pasos en `docs/ESTADO-Y-CONTINUIDAD.md` §3–5.
-Fase 5 (WFO/Monte Carlo) diseñada pero aún no ejecutada sobre este resultado.
+**Proyecto completado — Veredicto: NO APROBADO.** Fases 0–8 completas. Fase 4 corrida sobre
+5 activos cripto (BTC/ETH/SOL/XRP/BNB, 144 trades). Fase 5 (WFO + Monte Carlo) ejecutada
+completa: 6 de 7 criterios de aprobación fallan (OOS negativo y empeorando, óptimo en pico
+aislado, DD_p95 -24.3%, expectancy negativa bajo fricciones, concentración extrema por
+activo y por período). La metodología de Alex Ruiz, formalizada objetivamente, **no muestra
+edge estadístico verificable** en el universo cripto probado. El sistema no pasa a Fase 9.
+Ver el veredicto completo y las opciones de continuidad en
+`docs/ESTADO-Y-CONTINUIDAD.md` §5 y §7.
 
 **Descargo:** proyecto educativo/de investigación. Ni el código ni los documentos
 constituyen asesoría financiera.
