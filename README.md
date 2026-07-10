@@ -15,10 +15,12 @@ declaradas en los videos son hipótesis a falsar, no supuestos.
 
 | Ruta | Contenido |
 |------|-----------|
-| `corpus/` | 5 transcripciones fuente (trazabilidad de cada regla) |
-| `docs/FASE-0…10` | Documentos por fase (corpus → reglas → formalización → validación → backtesting → robustez → riesgo → automatización → plataforma → demo → producción) |
-| `docs/FASE-6-audit-completo.md` · `docs/informe_validacion_y_pruebas.md` | Auditoría de código y hoja de ruta de pruebas |
-| `code/python/satar_backtest.py` | **Motor de referencia** (máquina de estados FASE-2, fricciones FASE-4, kill-switch FASE-6) |
+| `corpus/` | 5 transcripciones fuente (trazabilidad de cada regla, hipótesis SATAR-1) |
+| `docs/archive/FASE-0…10` | SATAR-1: documentos por fase (corpus → reglas → formalización → validación → backtesting → robustez → riesgo → automatización → plataforma → demo → producción) |
+| `docs/SWEEP-formalizacion.md` · `docs/SWEEP-resultados-veredicto.md` | Hipótesis SWEEP: reglas exactas y veredicto |
+| `code/python/satar_backtest.py` | **Motor de referencia** (auditado, reutilizado por HYDRA y SWEEP) |
+| `code/python/hydra_backtest.py` · `hydra_wfo.py` · `hydra_montecarlo.py` | Motor e infraestructura de validación de la hipótesis HYDRA |
+| `code/python/sweep_backtest.py` · `sweep_wfo.py` · `sweep_montecarlo.py` | Motor e infraestructura de validación de la hipótesis SWEEP |
 | `code/python/download_data.py` | Descarga de klines M5 (Bybit v5) |
 | `code/python/satar_live.py` | Ejecutor demo/live (dry-run por defecto; testnet; SL/TP server-side) |
 | `code/pine/SATAR1_PilarC.pine` | Estrategia TradingView (Pine v6, anti-repintado) |
@@ -40,16 +42,15 @@ Ruta de pruebas completa: `docs/informe_validacion_y_pruebas.md` §3.
 Reglas duras: no dinero real sin aprobar Fase 5 (robustez) y Fase 9 (demo 90 días,
 PF>1.5 · DD<10% · expectancy>0 · **≥150 trades** · consistencia mensual).
 
-## Estado (2026-07-09)
+## Estado (2026-07-10)
 
-**Proyecto completado — Veredicto: NO APROBADO.** Fases 0–8 completas. Fase 4 corrida sobre
-5 activos cripto (BTC/ETH/SOL/XRP/BNB, 144 trades). Fase 5 (WFO + Monte Carlo) ejecutada
-completa: 6 de 7 criterios de aprobación fallan (OOS negativo y empeorando, óptimo en pico
-aislado, DD_p95 -24.3%, expectancy negativa bajo fricciones, concentración extrema por
-activo y por período). La metodología de Alex Ruiz, formalizada objetivamente, **no muestra
-edge estadístico verificable** en el universo cripto probado. El sistema no pasa a Fase 9.
-Ver el veredicto completo y las opciones de continuidad en
-`docs/ESTADO-Y-CONTINUIDAD.md` §5 y §7.
+**3 hipótesis probadas con el mismo protocolo de rigor — las 3 rechazadas.** SATAR-1
+(metodología Alex Ruiz, pullback a EMA), HYDRA (pullback + filtro de régimen HMM/Hurst) y
+SWEEP (liquidity sweep / stop hunt sobre estructura semanal) fueron formalizadas sin
+ambigüedad, probadas sobre 5 activos cripto (BTC/ETH/SOL/XRP/BNB, 2020-2025) y llevadas por
+Walk-Forward Optimization + Monte Carlo con holdout intocable. Ninguna muestra edge
+estadístico verificable. Detalle completo y opciones de continuidad en
+[`docs/ESTADO-Y-CONTINUIDAD.md`](docs/ESTADO-Y-CONTINUIDAD.md).
 
 **Descargo:** proyecto educativo/de investigación. Ni el código ni los documentos
 constituyen asesoría financiera.
