@@ -1,7 +1,6 @@
-# SATAR-1 — Sistema de Trading Automatizado (Metodología Alex Ruiz)
+# SATAR-1 — Sistema de Trading Automatizado
 
-Ingeniería inversa, validación estadística y automatización de la metodología de trading
-de Alex Ruiz (@AlexRuiiz, YouTube). **Nada se asume rentable sin demostrarlo**: las métricas
+Ingeniería inversa, validación estadística y automatización de la metodología propia de trading. **Nada se asume rentable sin demostrarlo**: las métricas
 declaradas en los videos son hipótesis a falsar, no supuestos.
 
 **👉 Para retomar el proyecto, empieza siempre por [`docs/ESTADO-Y-CONTINUIDAD.md`](docs/ESTADO-Y-CONTINUIDAD.md)** — resume qué está hecho, el hallazgo empírico más reciente y los próximos pasos concretos.
