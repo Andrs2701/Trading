@@ -11,7 +11,7 @@ Se han probado **3 hipótesis de trading algorítmico en cripto perpetuos**, tod
 
 | # | Hipótesis | Veredicto | Documentación |
 |---|---|---|---|
-| 1 | **SATAR-1**: metodología de Alex Ruiz (pullback a EMA50, multi-timeframe) | ❌ NO APROBADO | `docs/archive/` (FASE-0…10) |
+| 1 | **SATAR-1**: metodología de trading reverse-engineered de un creador de contenido (pullback a EMA50, multi-timeframe) | ❌ NO APROBADO | `docs/archive/` (FASE-0…10) |
 | 2 | **HYDRA**: SATAR-1 + filtro de régimen HMM/Hurst | ❌ NO APROBADO | resultados en `code/python/results/*_hydra.json` (informe narrativo pendiente) |
 | 3 | **SWEEP**: liquidity sweep / stop hunt sobre estructura semanal | ❌ NO APROBADO | `docs/SWEEP-formalizacion.md`, `docs/SWEEP-resultados-veredicto.md` |
 
@@ -19,13 +19,13 @@ Ninguna de las tres muestra edge estadístico verificable sobre 5 activos cripto
 
 ## 1. Organización del repositorio
 
-- **`docs/archive/`** — documentación completa de SATAR-1 (Fases 0-10 del proyecto original, reverse-engineering de la metodología de Alex Ruiz). Congelada, no se toca salvo error de hecho.
+- **`docs/archive/`** — documentación completa de SATAR-1 (Fases 0-10 del proyecto original, reverse-engineering de una metodología de trading divulgada en YouTube). Congelada, no se toca salvo error de hecho.
 - **`docs/SWEEP-*.md`** — hipótesis activa más reciente, formalización y veredicto.
 - **`code/python/satar_*.py`** — motor e infraestructura de SATAR-1 (auditados, reutilizados como base por HYDRA y SWEEP).
 - **`code/python/hydra_*.py`** — motor de HYDRA (reutiliza infraestructura de `satar_backtest.py`).
 - **`code/python/sweep_*.py`** — motor de SWEEP (reutiliza infraestructura de `satar_backtest.py`).
 
-## 2. Hipótesis 1 — SATAR-1 (metodología Alex Ruiz)
+## 2. Hipótesis 1 — SATAR-1 (metodología reverse-engineered)
 
 Ver `docs/archive/ESTADO-Y-CONTINUIDAD.md` para el detalle completo. Resumen: rentable en la región IS más antigua (2020-2022) pero **6 de 7 criterios de aprobación de la Fase 5 fallan** — óptimo en pico aislado (no meseta), OOS negativo y empeorando, drawdown al percentil 95 de -24.3%, expectancy negativa bajo fricciones, y 166% del PnL neto concentrado en un solo tercio del histórico. Auditoría multi-agente encontró y corrigió 9 bugs en el motor de validación antes de confiar en el veredicto.
 

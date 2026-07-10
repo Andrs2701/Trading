@@ -45,7 +45,7 @@ PF>1.5 · DD<10% · expectancy>0 · **≥150 trades** · consistencia mensual).
 ## Estado (2026-07-10)
 
 **3 hipótesis probadas con el mismo protocolo de rigor — las 3 rechazadas.** SATAR-1
-(metodología Alex Ruiz, pullback a EMA), HYDRA (pullback + filtro de régimen HMM/Hurst) y
+(pullback a EMA multi-timeframe), HYDRA (pullback + filtro de régimen HMM/Hurst) y
 SWEEP (liquidity sweep / stop hunt sobre estructura semanal) fueron formalizadas sin
 ambigüedad, probadas sobre 5 activos cripto (BTC/ETH/SOL/XRP/BNB, 2020-2025) y llevadas por
 Walk-Forward Optimization + Monte Carlo con holdout intocable. Ninguna muestra edge
