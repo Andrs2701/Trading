@@ -1,0 +1,191 @@
+{
+  "config": {
+    "vol_spike_mult": 1.8,
+    "range_expansion_mult": 1.4,
+    "stop_atr_mult": 1.8
+  },
+  "n_trades": 1801,
+  "expectancy_R_base": 0.0032,
+  "mc1_bootstrap": {
+    "dd_mean": -0.6154,
+    "dd_p95": -0.8406,
+    "dd_worst": -0.9541,
+    "max_loss_streak_p95": 30,
+    "max_loss_streak_worst": 48
+  },
+  "mc2_frictions": {
+    "expectancy_mean": -0.025,
+    "expectancy_p25": -0.0253,
+    "expectancy_p05": -0.0257,
+    "pasa_p25_positivo": false
+  },
+  "mc3_price_noise": {
+    "expectancy_base": 0.0032,
+    "expectancy_mean_noisy": 0.0032,
+    "expectancy_p05_noisy": -0.001,
+    "caida_relativa": 0.0052,
+    "gatillo_fragil": false
+  },
+  "sensibilidad": [
+    {
+      "param": "lookback_hours",
+      "cambio": "-20%",
+      "valor": 19,
+      "expectancy_R": 0.0257,
+      "trades": 1910,
+      "delta_rel": 7.031,
+      "critico": true
+    },
+    {
+      "param": "lookback_hours",
+      "cambio": "+20%",
+      "valor": 29,
+      "expectancy_R": 0.0227,
+      "trades": 1661,
+      "delta_rel": 6.094,
+      "critico": true
+    },
+    {
+      "param": "vol_ma_window_hours",
+      "cambio": "-20%",
+      "valor": 16,
+      "expectancy_R": -0.0012,
+      "trades": 1780,
+      "delta_rel": -1.375,
+      "critico": true
+    },
+    {
+      "param": "vol_ma_window_hours",
+      "cambio": "+20%",
+      "valor": 24,
+      "expectancy_R": 0.0092,
+      "trades": 1807,
+      "delta_rel": 1.875,
+      "critico": true
+    },
+    {
+      "param": "ema_trail_n",
+      "cambio": "-20%",
+      "valor": 40,
+      "expectancy_R": -0.0037,
+      "trades": 1824,
+      "delta_rel": -2.156,
+      "critico": true
+    },
+    {
+      "param": "ema_trail_n",
+      "cambio": "+20%",
+      "valor": 60,
+      "expectancy_R": 0.0051,
+      "trades": 1779,
+      "delta_rel": 0.594,
+      "critico": true
+    },
+    {
+      "param": "hurst_window_days",
+      "cambio": "-20%",
+      "valor": 80,
+      "expectancy_R": 0.0249,
+      "trades": 1724,
+      "delta_rel": 6.781,
+      "critico": true
+    },
+    {
+      "param": "hurst_window_days",
+      "cambio": "+20%",
+      "valor": 120,
+      "expectancy_R": 0.0531,
+      "trades": 1837,
+      "delta_rel": 15.594,
+      "critico": true
+    },
+    {
+      "param": "hurst_filter",
+      "cambio": "-20%",
+      "valor": 0.41600000000000004,
+      "expectancy_R": 0.03,
+      "trades": 3332,
+      "delta_rel": 8.375,
+      "critico": true
+    },
+    {
+      "param": "hurst_filter",
+      "cambio": "+20%",
+      "valor": 0.624,
+      "expectancy_R": 0.2144,
+      "trades": 45,
+      "delta_rel": 66.0,
+      "critico": true
+    },
+    {
+      "param": "stop_min_atr",
+      "cambio": "-20%",
+      "valor": 0.12,
+      "expectancy_R": 0.0032,
+      "trades": 1801,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "stop_min_atr",
+      "cambio": "+20%",
+      "valor": 0.18,
+      "expectancy_R": 0.0032,
+      "trades": 1801,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "stop_max_atr",
+      "cambio": "-20%",
+      "valor": 2.4000000000000004,
+      "expectancy_R": 0.0032,
+      "trades": 1801,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "stop_max_atr",
+      "cambio": "+20%",
+      "valor": 3.5999999999999996,
+      "expectancy_R": 0.0032,
+      "trades": 1801,
+      "delta_rel": 0.0,
+      "critico": false
+    }
+  ],
+  "estabilidad": {
+    "por_activo": {
+      "BTCUSDT": {
+        "trades": 414,
+        "pnl": -3490.08
+      },
+      "ETHUSDT": {
+        "trades": 402,
+        "pnl": -525.8
+      },
+      "SOLUSDT": {
+        "trades": 337,
+        "pnl": 9552.81
+      },
+      "XRPUSDT": {
+        "trades": 304,
+        "pnl": -251.55
+      },
+      "BNBUSDT": {
+        "trades": 344,
+        "pnl": -3242.23
+      }
+    },
+    "pnl_total": 2043.15,
+    "max_share_activo": 4.676,
+    "alarma_concentracion_activo": true,
+    "pnl_por_tercio": [
+      2677.17,
+      -1963.72,
+      1329.71
+    ],
+    "max_share_tercio": 1.31,
+    "alarma_concentracion_temporal": true
+  }
+}
