@@ -38,7 +38,7 @@ Extensión de SATAR-1 añadiendo clasificación de régimen (Hidden Markov Model
 - **Nota técnica importante**: se encontró y corrigió un bug de fórmula de equity (aditiva `E0·(1+0.01·Σr)` → compuesta `E0·Π(1+0.01·r)`) que producía drawdowns matemáticamente imposibles (>100%, hasta -605% reportado antes del fix). El bug estaba en `hydra_montecarlo.py` y el objetivo de `hydra_wfo.py`; se corrigió y se re-verificó que el veredicto (ya negativo por expectativa cruda) no depende de esa métrica rota.
 - El parámetro no-optimizable `arrive_n` resultó extremadamente sensible (±20% invierte el signo completo del resultado) — otra señal de que cualquier resultado positivo aislado sería frágil/casual, no un edge real.
 
-*(Pendiente menor: falta un informe narrativo `docs/HYDRA-resultados-veredicto.md` equivalente al de SWEEP — los números ya están en los JSON de resultados.)*
+Informe completo con el drawdown re-verificado (fórmula compuesta): `docs/HYDRA-resultados-veredicto.md`.
 
 ## 4. Hipótesis 3 — SWEEP (liquidity sweep / stop hunt)
 
