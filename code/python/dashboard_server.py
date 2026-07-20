@@ -36,9 +36,9 @@ def get_engine_data(symbol: str, use_bb_filter: bool = True):
         if df.index.tz is None:
             df.index = df.index.tz_localize("UTC")
     else:
-        # Fallback para Render Cloud: descargar 150 días de klines M5 en vivo desde Bybit
+        # Fallback para Render Cloud: descargar 30 días de klines M5 en vivo desde Bybit (rápido)
         try:
-            df = fetch_klines_m5(symbol, days=150, testnet=False)
+            df = fetch_klines_m5(symbol, days=30, testnet=False)
         except Exception as e:
             return None, None, f"Error obteniendo klines para {symbol}: {e}"
         
