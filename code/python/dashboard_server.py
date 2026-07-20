@@ -124,20 +124,20 @@ def get_engine_data(symbol: str):
     # Análisis de régimen
     last_vol = float(v[-1])
     vol_avg = float(h1_vol_ma[-1]) if not np.isnan(h1_vol_ma[-1]) else 1.0
-    vol_ratio = round(last_vol / (vol_avg + 1e-12), 2)
-    last_body = abs(float(c[-1]) - float(Hdf["open"].iloc[-1]))
+    vol_ratio = float(round(last_vol / (vol_avg + 1e-12), 2))
+    last_body = float(abs(c[-1] - Hdf["open"].iloc[-1]))
     last_atr_h1 = float(h1_atr[-1]) if not np.isnan(h1_atr[-1]) else 1.0
-    body_atr_ratio = round(last_body / (last_atr_h1 + 1e-12), 2)
+    body_atr_ratio = float(round(last_body / (last_atr_h1 + 1e-12), 2))
 
     analysis = {
-        "hurst_exponent": round(last_hurst, 3),
+        "hurst_exponent": float(round(last_hurst, 3)),
         "hurst_status": "Persistente (Tendencia)" if last_hurst >= 0.52 else "Normal",
         "hurst_ok": bool(last_hurst >= p.hurst_filter),
         "vol_ratio": vol_ratio,
-        "vol_ok": bool(vol_ratio > p.vol_spike_mult),
+        "vol_ok": bool(vol_ratio > float(p.vol_spike_mult)),
         "body_atr_ratio": body_atr_ratio,
-        "body_atr_ok": bool(body_atr_ratio > p.range_expansion_mult),
-        "funnel": metrics.get("counters", {})
+        "body_atr_ok": bool(body_atr_ratio > float(p.range_expansion_mult)),
+        "funnel": {str(k): int(v) for k, v in metrics.get("counters", {}).items()}
     }
 
     live_st = load_state(symbol)
