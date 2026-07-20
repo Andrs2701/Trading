@@ -31,13 +31,16 @@ def get_engine_data(symbol: str, use_bb_filter: bool = True):
     cache_key = f"{symbol}_{use_bb_filter}"
     
     csv_file = f"{symbol.lower()}_m5.csv"
-    if not os.path.exists(csv_file):
-        # Fallback a synthetic data o error
-        return None, None, f"No se encontró el archivo {csv_file}"
-        
-    df = pd.read_csv(csv_file, parse_dates=["timestamp"], index_col="timestamp")
-    if df.index.tz is None:
-        df.index = df.index.tz_localize("UTC")
+    if os.path.exists(csv_file):
+        df = pd.read_csv(csv_file, parse_dates=["timestamp"], index_col="timestamp")
+        if df.index.tz is None:
+            df.index = df.index.tz_localize("UTC")
+    else:
+        # Fallback para Render Cloud: descargar 150 días de klines M5 en vivo desde Bybit
+        try:
+            df = fetch_klines_m5(symbol, days=150, testnet=False)
+        except Exception as e:
+            return None, None, f"Error obteniendo klines para {symbol}: {e}"
         
     p = make_params()
     eng = BreakoutEngine(df, p, symbol=symbol, funnel=True)
