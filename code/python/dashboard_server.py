@@ -184,7 +184,10 @@ def api_data():
             return jsonify({"error": err}), 400
         return jsonify(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[API ERROR] {e}\n{tb}")
+        return jsonify({"error": str(e), "traceback": tb}), 500
 
 @app.route("/api/symbols")
 def api_symbols():
