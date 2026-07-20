@@ -1,0 +1,180 @@
+{
+  "trades_totales": 2851,
+  "expectancy_base": -0.1483,
+  "mc_1_bootstrap": {
+    "dd_mean": -4.1854,
+    "dd_p95": -5.0817,
+    "dd_worst": -6.0518,
+    "max_loss_streak_p95": 42,
+    "max_loss_streak_worst": 68
+  },
+  "mc_2_fricciones": {
+    "expectancy_mean": -0.1868,
+    "expectancy_p25": -0.1872,
+    "expectancy_p05": -0.1877,
+    "pasa_p25_positivo": false
+  },
+  "mc_3_ruido_precio": {
+    "expectancy_base": -0.1483,
+    "expectancy_mean_noisy": -0.1484,
+    "expectancy_p05_noisy": -0.1504,
+    "caida_relativa": 0.0176,
+    "gatillo_fragil": false
+  },
+  "sensibilidad": [
+    {
+      "param": "buf_atr",
+      "cambio": "-20%",
+      "valor": 0.27999999999999997,
+      "expectancy_R": -0.1398,
+      "trades": 2883,
+      "delta_rel": 0.057,
+      "critico": false
+    },
+    {
+      "param": "buf_atr",
+      "cambio": "+20%",
+      "valor": 0.42,
+      "expectancy_R": -0.141,
+      "trades": 2773,
+      "delta_rel": 0.049,
+      "critico": false
+    },
+    {
+      "param": "stop_min_atr",
+      "cambio": "-20%",
+      "valor": 0.12,
+      "expectancy_R": -0.1501,
+      "trades": 2851,
+      "delta_rel": -0.012,
+      "critico": false
+    },
+    {
+      "param": "stop_min_atr",
+      "cambio": "+20%",
+      "valor": 0.18,
+      "expectancy_R": -0.1471,
+      "trades": 2851,
+      "delta_rel": 0.008,
+      "critico": false
+    },
+    {
+      "param": "stop_max_atr",
+      "cambio": "-20%",
+      "valor": 2.4000000000000004,
+      "expectancy_R": -0.1516,
+      "trades": 2549,
+      "delta_rel": -0.022,
+      "critico": false
+    },
+    {
+      "param": "stop_max_atr",
+      "cambio": "+20%",
+      "valor": 3.5999999999999996,
+      "expectancy_R": -0.1233,
+      "trades": 2961,
+      "delta_rel": 0.169,
+      "critico": false
+    },
+    {
+      "param": "tp_lookback",
+      "cambio": "-20%",
+      "valor": 80,
+      "expectancy_R": -0.1393,
+      "trades": 2859,
+      "delta_rel": 0.061,
+      "critico": false
+    },
+    {
+      "param": "tp_lookback",
+      "cambio": "+20%",
+      "valor": 120,
+      "expectancy_R": -0.1526,
+      "trades": 2849,
+      "delta_rel": -0.029,
+      "critico": false
+    },
+    {
+      "param": "pin_ratio",
+      "cambio": "-20%",
+      "valor": 1.6,
+      "expectancy_R": -0.147,
+      "trades": 2851,
+      "delta_rel": 0.009,
+      "critico": false
+    },
+    {
+      "param": "pin_ratio",
+      "cambio": "+20%",
+      "valor": 2.4,
+      "expectancy_R": -0.1475,
+      "trades": 2850,
+      "delta_rel": 0.005,
+      "critico": false
+    },
+    {
+      "param": "armed_window",
+      "cambio": "-20%",
+      "valor": 10,
+      "expectancy_R": -0.1483,
+      "trades": 2851,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "armed_window",
+      "cambio": "+20%",
+      "valor": 14,
+      "expectancy_R": -0.1483,
+      "trades": 2851,
+      "delta_rel": 0.0,
+      "critico": false
+    }
+  ],
+  "estabilidad": {
+    "activos": {
+      "BTCUSDT": {
+        "trades": 631,
+        "expectancy_R": -0.1626,
+        "win_rate": 0.2076
+      },
+      "ETHUSDT": {
+        "trades": 601,
+        "expectancy_R": -0.2111,
+        "win_rate": 0.1714
+      },
+      "SOLUSDT": {
+        "trades": 518,
+        "expectancy_R": -0.0829,
+        "win_rate": 0.2046
+      },
+      "XRPUSDT": {
+        "trades": 537,
+        "expectancy_R": -0.0863,
+        "win_rate": 0.2346
+      },
+      "BNBUSDT": {
+        "trades": 564,
+        "expectancy_R": -0.1848,
+        "win_rate": 0.1755
+      }
+    },
+    "temporal": {
+      "tercio_1": {
+        "trades": 950,
+        "expectancy_R": -0.0855,
+        "win_rate": 0.2053
+      },
+      "tercio_2": {
+        "trades": 950,
+        "expectancy_R": -0.1741,
+        "win_rate": 0.1937
+      },
+      "tercio_3": {
+        "trades": 951,
+        "expectancy_R": -0.1855,
+        "win_rate": 0.1956
+      }
+    }
+  }
+}

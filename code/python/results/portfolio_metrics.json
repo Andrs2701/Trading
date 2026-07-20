@@ -1,0 +1,151 @@
+{
+  "portfolio": {
+    "nombre": "PORTFOLIO AGREGADO",
+    "trades": 144,
+    "win_rate": 0.1806,
+    "profit_factor": 0.625,
+    "expectancy_usd": -12.53,
+    "expectancy_R": -0.125,
+    "max_drawdown": -0.2419,
+    "recovery_factor": -0.69,
+    "sharpe": -0.68,
+    "sortino": -1.97,
+    "cagr": -0.0316,
+    "ret_total": -0.1804,
+    "años": 6.19,
+    "trades_por_año": 23.3,
+    "racha_max": {
+      "win": 2,
+      "loss": 18
+    },
+    "pnl_total": -1804.49,
+    "pnl_ganador_medio": 115.62,
+    "pnl_perdedor_medio": -40.77
+  },
+  "por_activo": {
+    "BTCUSDT": {
+      "nombre": "BTCUSDT",
+      "trades": 35,
+      "win_rate": 0.1714,
+      "profit_factor": 0.549,
+      "expectancy_usd": -19.62,
+      "expectancy_R": -0.198,
+      "max_drawdown": -0.0965,
+      "recovery_factor": -0.69,
+      "sharpe": -0.47,
+      "sortino": -1.3,
+      "cagr": -0.0116,
+      "ret_total": -0.0687,
+      "años": 6.12,
+      "trades_por_año": 5.7,
+      "racha_max": {
+        "win": 2,
+        "loss": 12
+      },
+      "pnl_total": -686.7,
+      "pnl_ganador_medio": 139.2,
+      "pnl_perdedor_medio": -52.48
+    },
+    "ETHUSDT": {
+      "nombre": "ETHUSDT",
+      "trades": 35,
+      "win_rate": 0.1714,
+      "profit_factor": 0.828,
+      "expectancy_usd": -4.81,
+      "expectancy_R": -0.045,
+      "max_drawdown": -0.0476,
+      "recovery_factor": -0.36,
+      "sharpe": -0.14,
+      "sortino": -0.46,
+      "cagr": -0.0031,
+      "ret_total": -0.0168,
+      "años": 5.55,
+      "trades_por_año": 6.3,
+      "racha_max": {
+        "win": 1,
+        "loss": 8
+      },
+      "pnl_total": -168.48,
+      "pnl_ganador_medio": 135.26,
+      "pnl_perdedor_medio": -33.79
+    },
+    "SOLUSDT": {
+      "nombre": "SOLUSDT",
+      "trades": 23,
+      "win_rate": 0.1739,
+      "profit_factor": 0.911,
+      "expectancy_usd": -3.44,
+      "expectancy_R": -0.024,
+      "max_drawdown": -0.0679,
+      "recovery_factor": -0.11,
+      "sharpe": -0.04,
+      "sortino": -0.17,
+      "cagr": -0.0015,
+      "ret_total": -0.0079,
+      "años": 5.36,
+      "trades_por_año": 4.3,
+      "racha_max": {
+        "win": 3,
+        "loss": 14
+      },
+      "pnl_total": -79.11,
+      "pnl_ganador_medio": 201.72,
+      "pnl_perdedor_medio": -46.63
+    },
+    "XRPUSDT": {
+      "nombre": "XRPUSDT",
+      "trades": 29,
+      "win_rate": 0.2414,
+      "profit_factor": 0.599,
+      "expectancy_usd": -8.44,
+      "expectancy_R": -0.084,
+      "max_drawdown": -0.0398,
+      "recovery_factor": -0.61,
+      "sharpe": -0.4,
+      "sortino": -0.75,
+      "cagr": -0.0044,
+      "ret_total": -0.0245,
+      "años": 5.63,
+      "trades_por_año": 5.2,
+      "racha_max": {
+        "win": 1,
+        "loss": 5
+      },
+      "pnl_total": -244.62,
+      "pnl_ganador_medio": 52.21,
+      "pnl_perdedor_medio": -27.73
+    },
+    "BNBUSDT": {
+      "nombre": "BNBUSDT",
+      "trades": 22,
+      "win_rate": 0.1364,
+      "profit_factor": 0.23,
+      "expectancy_usd": -28.44,
+      "expectancy_R": -0.292,
+      "max_drawdown": -0.061,
+      "recovery_factor": -1.03,
+      "sharpe": -1.35,
+      "sortino": -2.36,
+      "cagr": -0.0151,
+      "ret_total": -0.0626,
+      "años": 4.25,
+      "trades_por_año": 5.2,
+      "racha_max": {
+        "win": 1,
+        "loss": 8
+      },
+      "pnl_total": -625.58,
+      "pnl_ganador_medio": 62.36,
+      "pnl_perdedor_medio": -42.77
+    }
+  },
+  "h0": {
+    "nombre": "Hipótesis Alex Ruiz (H0)",
+    "win_rate": 0.57,
+    "trades_por_año": 80,
+    "cagr": 0.34,
+    "max_drawdown": -0.1,
+    "profit_factor": 1.5
+  },
+  "timestamp": "2026-07-09 09:16:49.625444"
+}

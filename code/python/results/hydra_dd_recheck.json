@@ -1,0 +1,12 @@
+{
+  "n_trades": 2851,
+  "expectancy_R": -0.1483,
+  "win_rate": 0.1982,
+  "mc1_bootstrap_corregido": {
+    "dd_mean": -0.9864,
+    "dd_p95": -0.9951,
+    "dd_worst": -0.9979,
+    "max_loss_streak_p95": 42,
+    "max_loss_streak_worst": 68
+  }
+}

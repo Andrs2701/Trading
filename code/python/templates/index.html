@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SATAR-1 — Dashboard de Trading Algorítmico</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --bg-card: rgba(18, 26, 43, 0.7);
+            --border-card: rgba(255, 255, 255, 0.08);
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.3);
+            --accent-green: #10b981;
+            --accent-green-glow: rgba(16, 185, 129, 0.25);
+            --accent-red: #ef4444;
+            --accent-red-glow: rgba(239, 68, 68, 0.25);
+            --accent-purple: #8b5cf6;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.10) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        /* Glassmorphism Card Style */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Header Layout */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary), var(--accent-purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 20px;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .brand-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #fff, #93c5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-title p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Symbol Tabs Selector */
+        .symbol-tabs {
+            display: flex;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid var(--border-card);
+            gap: 4px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary), #2563eb);
+            color: #fff;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .metric-value.green { color: var(--accent-green); text-shadow: 0 0 12px var(--accent-green-glow); }
+        .metric-value.red { color: var(--accent-red); text-shadow: 0 0 12px var(--accent-red-glow); }
+        .metric-value.blue { color: #60a5fa; }
+
+        /* Main Grid Layout */
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Chart Area */
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .chart-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        #chart-container {
+            width: 100%;
+            height: 440px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* Regime Analysis Panel */
+        .analysis-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .analysis-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .analysis-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge.pass { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge.fail { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        /* Trades Table Area */
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            padding: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-card);
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .tag-buy { color: var(--accent-green); font-weight: 600; }
+        .tag-sell { color: var(--accent-red); font-weight: 600; }
+        
+        .pnl-positive { color: var(--accent-green); font-weight: 600; }
+        .pnl-negative { color: var(--accent-red); font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">S1</div>
+            <div class="brand-title">
+                <h1>SATAR-1 Dashboard</h1>
+                <p>Estrategia BREAKOUT-ATR — Algorithmic Trading System</p>
+            </div>
+        </div>
+
+        <div class="symbol-tabs" id="symbol-tabs">
+            <button class="tab-btn active" data-symbol="SOLUSDT">SOLUSDT</button>
+            <button class="tab-btn" data-symbol="ETHUSDT">ETHUSDT</button>
+            <button class="tab-btn" data-symbol="BTCUSDT">BTCUSDT</button>
+            <button class="tab-btn" id="btn-run-cycle" style="background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.4);">⚡ Evaluar Mercado</button>
+        </div>
+    </header>
+
+    <!-- Key Metrics Grid -->
+    <div class="metrics-grid">
+        <div class="glass-card metric-card">
+            <span class="metric-label">Profit Factor</span>
+            <span class="metric-value green" id="val-pf">1.491</span>
+        </div>
+        <div class="glass-card metric-card">
+            <span class="metric-label">Expectancy (R)</span>
+            <span class="metric-value blue" id="val-exp">+0.343R</span>
+        </div>
+        <div class="glass-card metric-card">
+            <span class="metric-label">Win Rate</span>
+            <span class="metric-value" id="val-wr">33.7%</span>
+        </div>
+        <div class="glass-card metric-card">
+            <span class="metric-label">Max Drawdown</span>
+            <span class="metric-value red" id="val-dd">-10.1%</span>
+        </div>
+        <div class="glass-card metric-card">
+            <span class="metric-label">Total Trades</span>
+            <span class="metric-value" id="val-trades">172</span>
+        </div>
+        <div class="glass-card metric-card">
+            <span class="metric-label">Operativa Live</span>
+            <span class="metric-value green" style="font-size: 16px; margin-top: 4px;" id="val-status">🟢 DRY-RUN</span>
+        </div>
+    </div>
+
+    <!-- Main Layout: Chart + Analysis -->
+    <div class="dashboard-layout">
+        <!-- Chart Container -->
+        <div class="glass-card">
+            <div class="chart-header">
+                <span class="chart-title">Gráfico H1 con EMA50, Rangos y Entradas/Salidas</span>
+                <span id="chart-symbol-badge" class="badge pass">SOLUSDT</span>
+            </div>
+            <div id="chart-container"></div>
+        </div>
+
+        <!-- Regime & Diagnostic Panel -->
+        <div class="glass-card analysis-panel">
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px;">Análisis de Régimen</h3>
+
+            <!-- Hurst -->
+            <div class="analysis-item">
+                <div class="analysis-header">
+                    <span>Hurst Exponent (D1)</span>
+                    <span id="hurst-val" class="badge pass">0.542</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="hurst-bar" class="progress-fill" style="width: 65%; background: var(--accent-green);"></div>
+                </div>
+                <span id="hurst-status" style="font-size: 11px; color: var(--text-muted);">Persistente (> 0.52)</span>
+            </div>
+
+            <!-- Volume Spike -->
+            <div class="analysis-item">
+                <div class="analysis-header">
+                    <span>Ratio Volumen H1</span>
+                    <span id="vol-val" class="badge pass">2.1x</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="vol-bar" class="progress-fill" style="width: 70%; background: var(--primary);"></div>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted);">Umbral: > 1.8x Promedio</span>
+            </div>
+
+            <!-- Body Expansion -->
+            <div class="analysis-item">
+                <div class="analysis-header">
+                    <span>Expansión Cuerpo H1</span>
+                    <span id="body-val" class="badge pass">1.6x ATR</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="body-bar" class="progress-fill" style="width: 80%; background: var(--accent-purple);"></div>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted);">Umbral: > 1.4x ATR</span>
+            </div>
+
+            <!-- Diagnostic Funnel Summary -->
+            <div class="analysis-item" style="margin-top: auto;">
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Configuración WFO</span>
+                <p style="font-size: 11px; line-height: 1.5; color: var(--text-main); margin-top: 4px;">
+                    Vol Spike: <b>1.8x</b> | Range Exp: <b>1.4x</b><br>
+                    Stop ATR: <b>1.8x</b> | Trailing EMA: <b>50 H1</b>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trade History Table -->
+    <div class="glass-card">
+        <div class="table-header">
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px;">Histórico de Operaciones</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">R-Multiple & PnL Reales</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Fecha Entrada</th>
+                        <th>Fecha Salida</th>
+                        <th>Dirección</th>
+                        <th>Entrada</th>
+                        <th>Salida</th>
+                        <th>SL Inicial</th>
+                        <th>R-Multiple</th>
+                        <th>PnL ($)</th>
+                        <th>Cierre</th>
+                    </tr>
+                </thead>
+                <tbody id="trades-body">
+                    <!-- Dynamic trades rows -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let currentSymbol = 'SOLUSDT';
+        let chart = null;
+        let candleSeries = null;
+        let emaSeries = null;
+        let rangeHighSeries = null;
+        let rangeLowSeries = null;
+
+        function initChart() {
+            const container = document.getElementById('chart-container');
+            chart = LightweightCharts.createChart(container, {
+                layout: {
+                    background: { color: 'transparent' },
+                    textColor: '#9ca3af',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.04)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.04)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    timeVisible: true,
+                },
+            });
+
+            candleSeries = chart.addCandlestickSeries({
+                upColor: '#10b981',
+                downColor: '#ef4444',
+                borderVisible: false,
+                wickUpColor: '#10b981',
+                wickDownColor: '#ef4444',
+            });
+
+            emaSeries = chart.addLineSeries({
+                color: '#3b82f6',
+                lineWidth: 2,
+                title: 'EMA50',
+            });
+
+            rangeHighSeries = chart.addLineSeries({
+                color: 'rgba(239, 68, 68, 0.5)',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                title: 'Range High',
+            });
+
+            rangeLowSeries = chart.addLineSeries({
+                color: 'rgba(16, 185, 129, 0.5)',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                title: 'Range Low',
+            });
+        }
+
+        async function loadSymbolData(symbol) {
+            currentSymbol = symbol;
+            document.getElementById('chart-symbol-badge').innerText = symbol;
+
+            try {
+                const res = await fetch(`/api/data?symbol=${symbol}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                // Update Metrics
+                const m = data.metrics;
+                document.getElementById('val-pf').innerText = m.profit_factor ? m.profit_factor.toFixed(3) : 'N/A';
+                document.getElementById('val-exp').innerText = (m.expectancy_R > 0 ? '+' : '') + (m.expectancy_R ? m.expectancy_R.toFixed(3) : '0') + 'R';
+                document.getElementById('val-wr').innerText = ((m.win_rate || 0) * 100).toFixed(1) + '%';
+                document.getElementById('val-dd').innerText = ((m.max_drawdown || 0) * 100).toFixed(1) + '%';
+                document.getElementById('val-trades').innerText = m.trades || 0;
+
+                // Update Analysis
+                const a = data.analysis;
+                document.getElementById('hurst-val').innerText = a.hurst_exponent;
+                document.getElementById('hurst-status').innerText = a.hurst_status;
+                document.getElementById('vol-val').innerText = a.vol_ratio + 'x';
+                document.getElementById('body-val').innerText = a.body_atr_ratio + 'x ATR';
+
+                // Update Chart
+                if (data.chart_candles && data.chart_candles.length > 0) {
+                    const candles = data.chart_candles.map(c => ({
+                        time: c.time,
+                        open: c.open,
+                        high: c.high,
+                        low: c.low,
+                        close: c.close
+                    }));
+                    const emas = data.chart_candles.filter(c => c.ema50).map(c => ({ time: c.time, value: c.ema50 }));
+                    const rHighs = data.chart_candles.filter(c => c.range_high).map(c => ({ time: c.time, value: c.range_high }));
+                    const rLows = data.chart_candles.filter(c => c.range_low).map(c => ({ time: c.time, value: c.range_low }));
+
+                    candleSeries.setData(candles);
+                    emaSeries.setData(emas);
+                    rangeHighSeries.setData(rHighs);
+                    rangeLowSeries.setData(rLows);
+                    chart.timeScale().fitContent();
+                }
+
+                // Update Trades Table
+                const tbody = document.getElementById('trades-body');
+                tbody.innerHTML = '';
+                data.trades.slice(-50).reverse().forEach(t => {
+                    const row = document.createElement('tr');
+                    const pnlClass = t.pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                    const tagClass = t.direction === 'LONG' ? 'tag-buy' : 'tag-sell';
+                    
+                    row.innerHTML = `
+                        <td>${t.id}</td>
+                        <td>${t.entry_time}</td>
+                        <td>${t.exit_time}</td>
+                        <td class="${tagClass}">${t.direction}</td>
+                        <td>$${t.entry_price}</td>
+                        <td>$${t.exit_price}</td>
+                        <td>$${t.sl_init}</td>
+                        <td class="${pnlClass}">${t.r_multiple > 0 ? '+' : ''}${t.r_multiple}R</td>
+                        <td class="${pnlClass}">${t.pnl > 0 ? '+' : ''}$${t.pnl}</td>
+                        <td><span class="badge ${t.pnl >= 0 ? 'pass' : 'fail'}">${t.reason}</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+            } catch (err) {
+                console.error('Error cargando datos:', err);
+            }
+        }
+
+        // Tab buttons event listeners
+        document.querySelectorAll('.tab-btn[data-symbol]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn[data-symbol]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const symbol = btn.getAttribute('data-symbol');
+                loadSymbolData(symbol);
+            });
+        });
+
+        // Run cycle button
+        document.getElementById('btn-run-cycle').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-run-cycle');
+            btn.innerText = '⏳ Evaluando...';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/run_cycle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: currentSymbol })
+                });
+                const data = await res.json();
+                alert(data.message);
+                loadSymbolData(currentSymbol);
+            } catch (err) {
+                alert('Error al evaluar mercado: ' + err);
+            } finally {
+                btn.innerText = '⚡ Evaluar Mercado';
+                btn.disabled = false;
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            loadSymbolData('SOLUSDT');
+        });
+    </script>
+</body>
+</html>

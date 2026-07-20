@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: satar1-trading-bot
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r code/python/requirements.txt
+    startCommand: gunicorn --chdir code/python dashboard_server:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: BYBIT_API_KEY
+        sync: false
+      - key: BYBIT_API_SECRET
+        sync: false
+      - key: BYBIT_TESTNET
+        value: "true"
+      - key: BYBIT_LIVE
+        value: "true"
+      - key: TRADING_SYMBOL
+        value: "SOLUSDT"
+      - key: TRADING_EQUITY
+        value: "200.0"
+      - key: ENABLE_BACKGROUND_BOT
+        value: "true"

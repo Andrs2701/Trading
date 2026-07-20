@@ -1,0 +1,21 @@
+{
+  "start_date": "2026-07-20 22:58:15 UTC",
+  "days_target": 90,
+  "initial_equity": 200.0,
+  "current_equity": 200.0,
+  "risk_pct": 0.01,
+  "risk_usd": 2.0,
+  "total_trades": 0,
+  "winning_trades": 0,
+  "losing_trades": 0,
+  "total_pnl": 0.0,
+  "total_r": 0.0,
+  "max_drawdown": 0.0,
+  "peak_equity": 200.0,
+  "profit_factor": 0.0,
+  "symbols": [
+    "SOLUSDT",
+    "ETHUSDT"
+  ],
+  "mode": "TESTNET_DEMO"
+}

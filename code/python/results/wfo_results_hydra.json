@@ -1,0 +1,308 @@
+{
+  "grid": "coarse",
+  "grid_keys": [
+    "hurst_trend",
+    "score_threshold",
+    "tp_rr_range"
+  ],
+  "assets": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT",
+    "BNBUSDT"
+  ],
+  "holdout_start": "2025-07-01 00:00:00+00:00",
+  "folds": [
+    {
+      "fold": "F1",
+      "is_window": [
+        "2020-01-01",
+        "2023-01-01"
+      ],
+      "oos_window": [
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      "best_overrides": {
+        "hurst_trend": 0.51,
+        "score_threshold": 3,
+        "tp_rr_range": 2.2
+      },
+      "is": {
+        "obj": -0.4802,
+        "trades": 1396,
+        "expectancy_R": -0.1083,
+        "max_dd": -1.4846,
+        "win_rate": 0.2006
+      },
+      "oos": {
+        "obj": -0.7099,
+        "trades": 593,
+        "expectancy_R": -0.206,
+        "max_dd": -1.2135,
+        "win_rate": 0.1804
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 2.2
+          },
+          "obj": -0.4802,
+          "trades": 1396,
+          "expectancy_R": -0.1083,
+          "max_dd": -1.4846,
+          "win_rate": 0.2006
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 2.6
+          },
+          "obj": -0.4808,
+          "trades": 1396,
+          "expectancy_R": -0.1091,
+          "max_dd": -1.4958,
+          "win_rate": 0.2006
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 1.8
+          },
+          "obj": -0.4808,
+          "trades": 1396,
+          "expectancy_R": -0.1091,
+          "max_dd": -1.4959,
+          "win_rate": 0.2006
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 4,
+            "tp_rr_range": 1.8
+          },
+          "obj": -0.4923,
+          "trades": 1128,
+          "expectancy_R": -0.0874,
+          "max_dd": -0.9926,
+          "win_rate": 0.1924
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 4,
+            "tp_rr_range": 2.6
+          },
+          "obj": -0.4948,
+          "trades": 1128,
+          "expectancy_R": -0.0895,
+          "max_dd": -1.0143,
+          "win_rate": 0.1915
+        }
+      ],
+      "elapsed_s": 677.7
+    },
+    {
+      "fold": "F2",
+      "is_window": [
+        "2020-01-01",
+        "2024-01-01"
+      ],
+      "oos_window": [
+        "2024-01-01",
+        "2025-01-01"
+      ],
+      "best_overrides": {
+        "hurst_trend": 0.51,
+        "score_threshold": 3,
+        "tp_rr_range": 2.6
+      },
+      "is": {
+        "obj": -0.4336,
+        "trades": 1989,
+        "expectancy_R": -0.1375,
+        "max_dd": -2.629,
+        "win_rate": 0.1941
+      },
+      "oos": {
+        "obj": -0.6604,
+        "trades": 572,
+        "expectancy_R": -0.1359,
+        "max_dd": -0.7844,
+        "win_rate": 0.215
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 2.6
+          },
+          "obj": -0.4336,
+          "trades": 1989,
+          "expectancy_R": -0.1375,
+          "max_dd": -2.629,
+          "win_rate": 0.1941
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 2.2
+          },
+          "obj": -0.4337,
+          "trades": 1989,
+          "expectancy_R": -0.1377,
+          "max_dd": -2.6329,
+          "win_rate": 0.1941
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 1.8
+          },
+          "obj": -0.4341,
+          "trades": 1989,
+          "expectancy_R": -0.1391,
+          "max_dd": -2.6592,
+          "win_rate": 0.1941
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 4,
+            "tp_rr_range": 1.8
+          },
+          "obj": -0.4509,
+          "trades": 1641,
+          "expectancy_R": -0.1023,
+          "max_dd": -1.6376,
+          "win_rate": 0.1913
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 4,
+            "tp_rr_range": 2.6
+          },
+          "obj": -0.4518,
+          "trades": 1641,
+          "expectancy_R": -0.1037,
+          "max_dd": -1.6593,
+          "win_rate": 0.1907
+        }
+      ],
+      "elapsed_s": 896.6
+    },
+    {
+      "fold": "F3",
+      "is_window": [
+        "2020-01-01",
+        "2025-01-01"
+      ],
+      "oos_window": [
+        "2025-01-01",
+        "2025-07-01"
+      ],
+      "best_overrides": {
+        "hurst_trend": 0.51,
+        "score_threshold": 3,
+        "tp_rr_range": 2.6
+      },
+      "is": {
+        "obj": -0.3901,
+        "trades": 2561,
+        "expectancy_R": -0.1372,
+        "max_dd": -3.3604,
+        "win_rate": 0.1988
+      },
+      "oos": {
+        "obj": -0.8954,
+        "trades": 290,
+        "expectancy_R": -0.2455,
+        "max_dd": -0.7337,
+        "win_rate": 0.1966
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 2.6
+          },
+          "obj": -0.3901,
+          "trades": 2561,
+          "expectancy_R": -0.1372,
+          "max_dd": -3.3604,
+          "win_rate": 0.1988
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 2.2
+          },
+          "obj": -0.3902,
+          "trades": 2561,
+          "expectancy_R": -0.1377,
+          "max_dd": -3.3719,
+          "win_rate": 0.1988
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 3,
+            "tp_rr_range": 1.8
+          },
+          "obj": -0.3906,
+          "trades": 2561,
+          "expectancy_R": -0.1397,
+          "max_dd": -3.4206,
+          "win_rate": 0.1988
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 4,
+            "tp_rr_range": 1.8
+          },
+          "obj": -0.4138,
+          "trades": 2084,
+          "expectancy_R": -0.119,
+          "max_dd": -2.4259,
+          "win_rate": 0.19
+        },
+        {
+          "overrides": {
+            "hurst_trend": 0.51,
+            "score_threshold": 4,
+            "tp_rr_range": 2.6
+          },
+          "obj": -0.4142,
+          "trades": 2084,
+          "expectancy_R": -0.1199,
+          "max_dd": -2.4443,
+          "win_rate": 0.1895
+        }
+      ],
+      "elapsed_s": 1044.9
+    }
+  ],
+  "mean_is_obj": -0.4346,
+  "mean_oos_obj": -0.7552,
+  "wfe": null,
+  "wfe_verdict": "NO RENTABLE IN-SAMPLE (mean_is<=0)",
+  "rentable_is": false,
+  "rentable_oos": false,
+  "config_congelada": {
+    "hurst_trend": 0.51,
+    "score_threshold": 3,
+    "tp_rr_range": 2.6
+  }
+}

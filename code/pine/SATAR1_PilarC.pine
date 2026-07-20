@@ -1,0 +1,267 @@
+//@version=6
+// =============================================================================
+// SATAR-1 · Pilar C — Impulso-Pullback-Continuación multi-timeframe (Alex Ruiz)
+// Implementación de docs/FASE-2 (day trading: D1 grande / H1 intermedia / M5 pequeña)
+//
+// USO: aplicar en gráfico de 5 MINUTOS. Todas las series de temporalidad superior
+// usan el patrón anti-repintado expr[1] + lookahead_on (solo velas D1/H1 CERRADAS).
+//
+// APROXIMACIONES vs. motor Python (validar paridad en subperiodo común, FASE-2 §14):
+//  A1 Zonas extremas: pivotes D1 almacenados en array (máx 12) y validados por
+//     nº de pivotes agrupados dentro del ancho de zona (equivale al clustering).
+//  A2 f_imp del Fibonacci: mínimo/máximo de 20 velas H1 (igual que Python).
+//  A3 El doble techo (G5c) usa los 2 últimos pivotes D1 (ventana corta).
+// =============================================================================
+strategy("SATAR-1 Pilar C", overlay=true, initial_capital=10000,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=0,
+     commission_type=strategy.commission.percent, commission_value=0.055,
+     slippage=2, pyramiding=0, calc_on_every_tick=false,
+     max_bars_back=1000)
+
+// ------------------------------- Parámetros (FASE-2 §10) --------------------
+pEmaN      = input.int(50,   "P01 EMA (identidad, no optimizar)")
+pAtrN      = input.int(14,   "P02 ATR")
+pErN       = input.int(20,   "P05 ER limpieza")
+pKfracI    = input.int(2,    "P06 k fractal H1")
+pKpivG     = input.int(3,    "P07 k pivote D1")
+pZoneW     = input.float(0.5,"P09 ancho zona (xATR D1)", step=0.05)
+pMinTouch  = input.int(2,    "P10 toques mínimos zona")
+pErClean   = input.float(0.30,"P11 ER limpieza (D-4)", step=0.01)
+pAdxClean  = input.float(20.0,"P12 ADX limpieza (D-4)")
+pTouchWin  = input.int(3,    "P13 ventana toque extremo (velas D1)")
+pArriveN   = input.int(5,    "P14 velas tramo llegada")
+pErArrive  = input.float(0.35,"P15 ER llegada", step=0.01)
+pRsiExt    = input.float(70.0,"P16 RSI extremo")
+pDecelMax  = input.float(0.6, "P17 desaceleración (D-2)", step=0.05)
+pPinRatio  = input.float(2.0, "P18 ratio mecha pinbar")
+pDTopTol   = input.float(0.25,"P19 tolerancia doble techo (xATR)")
+pBiasExp   = input.int(3,    "P20 caducidad sesgo (velas D1)")
+pChaseAtr  = input.float(0.5, "P21 anti-chase (xATR H1) (D-5)")
+pArmedWin  = input.int(12,   "P22 ventana gatillo (velas H1) (D-5)")
+pBufAtr    = input.float(0.1, "P23 buffer stop (xATR H1)")
+pStopMin   = input.float(0.15,"P24 stop mínimo (xATR H1)")
+pStopMax   = input.float(3.0, "P25 stop máximo (xATR H1)")
+pRrMin     = input.float(0.5, "P27 RR mínimo")
+pRiskPct   = input.float(1.0, "P28 riesgo por trade (%)") / 100.0
+pLevCap    = input.float(5.0, "P37 apalancamiento nocional máx (xEquity)")
+pDdDay     = input.float(2.0, "P30 límite pérdida diaria (%)") / 100.0
+pDdWeek    = input.float(4.0, "P31 límite semanal (%)") / 100.0
+pDdMonth   = input.float(6.0, "P32 límite mensual (%)") / 100.0
+
+// ------------------------------- Utilidades ---------------------------------
+erf(src, n) =>
+    den = math.sum(math.abs(ta.change(src)), n)
+    den > 0 ? math.abs(src - src[n]) / den : 0.0
+
+// Serie HTF confirmada (anti-repintado): valor de la ÚLTIMA vela CERRADA del TF
+htf(tf, expr) =>
+    request.security(syminfo.tickerid, tf, expr[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+
+// ------------------------------- Series D1 (grande) -------------------------
+[dO, dH, dL, dC]   = request.security(syminfo.tickerid, "D", [open[1], high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[dO2, dH2, dC2]    = request.security(syminfo.tickerid, "D", [open[2], high[2], close[2]], lookahead=barmerge.lookahead_on)
+dAtr    = htf("D", ta.atr(pAtrN))
+dAtr10  = htf("D", ta.atr(10))
+dRsi    = htf("D", ta.rsi(close, 14))
+dEr     = htf("D", erf(close, pErN))
+dErArr  = htf("D", erf(close, pArriveN))
+[_dip, _dim, dAdxRaw] = ta.dmi(14, 14)
+dAdx    = htf("D", dAdxRaw)
+dBody3  = htf("D", (math.abs(close-open) + math.abs(close[1]-open[1]) + math.abs(close[2]-open[2])) / 3.0)
+dPivH   = htf("D", ta.pivothigh(high, pKpivG, pKpivG))
+dPivL   = htf("D", ta.pivotlow(low,  pKpivG, pKpivG))
+// Neckline (G5c): valle/cresta de las 10 velas D1 previas a la vela de señal (aprox. A3)
+dNeckS  = htf("D", ta.lowest(low, 10)[1])
+dNeckL  = htf("D", ta.highest(high, 10)[1])
+newD1   = timeframe.change("D")
+
+// ------------------------------- Series H1 (intermedia) ---------------------
+iC     = htf("60", close)
+iEma   = htf("60", ta.ema(close, pEmaN))
+iAtr   = htf("60", ta.atr(pAtrN))
+iPivH  = htf("60", ta.pivothigh(high, pKfracI, pKfracI))
+iPivL  = htf("60", ta.pivotlow(low,  pKfracI, pKfracI))
+iHi    = htf("60", high)
+iLo    = htf("60", low)
+iLow20 = htf("60", ta.lowest(low, 20))
+iHigh20= htf("60", ta.highest(high, 20))
+newH1  = timeframe.change("60")
+
+// ------------------------------- Series M5 (pequeña) ------------------------
+pEma  = ta.ema(close, pEmaN)
+
+// ------------------------------- Zonas extremas (A1) ------------------------
+var array<float> zoneH = array.new<float>()   // pivotes altos D1 (resistencias)
+var array<float> zoneL = array.new<float>()   // pivotes bajos D1 (soportes)
+if not na(dPivH) and dPivH != nz(dPivH[1])
+    array.push(zoneH, dPivH)
+    if array.size(zoneH) > 12
+        array.shift(zoneH)
+if not na(dPivL) and dPivL != nz(dPivL[1])
+    array.push(zoneL, dPivL)
+    if array.size(zoneL) > 12
+        array.shift(zoneL)
+
+// ¿precio px dentro de una zona con >= pMinTouch pivotes agrupados? → centro o na
+zoneCenter(array<float> arr, float px, float w) =>
+    float center = na
+    if array.size(arr) > 0
+        for i = 0 to array.size(arr) - 1
+            v = array.get(arr, i)
+            if math.abs(px - v) <= w
+                cnt = 0
+                for j = 0 to array.size(arr) - 1
+                    if math.abs(array.get(arr, j) - v) <= w
+                        cnt += 1
+                if cnt >= pMinTouch
+                    center := v
+    center
+
+// ------------------------------- Swings H1 en contexto de gráfico -----------
+var float shI1 = na, var float shI2 = na   // últimos 2 swing highs H1
+var float slI1 = na, var float slI2 = na   // últimos 2 swing lows  H1
+if not na(iPivH) and iPivH != nz(iPivH[1])
+    shI2 := shI1, shI1 := iPivH
+if not na(iPivL) and iPivL != nz(iPivL[1])
+    slI2 := slI1, slI1 := iPivL
+
+// ------------------------------- Máquina de estados (FASE-2 §13) ------------
+var int   state    = 0        // 0 IDLE · 1 BIAS · 2 STRUCTURE · 3 ARMED · 4 IN_POSITION
+var int   dir      = 0        // +1 long · −1 short
+var int   biasAgeG = 0
+var int   armedAgeI= 0
+var float oImp     = na, var float fImp = na
+var float zLo      = na, var float zHi  = na
+var float slPrice  = na, var float tpPrice = na
+
+fib(r) => fImp + r * (oImp - fImp)
+
+// --- Módulo G: sesgo al cierre de cada vela D1 ---
+if newD1 and state < 4
+    biasAgeG += 1
+    if state >= 1 and state < 4 and biasAgeG >= pBiasExp
+        state := 0, dir := 0                                    // R-C24 caducidad
+    g1 = dEr >= pErClean and dAdx >= pAdxClean                  // G1 limpieza (D-4)
+    g4 = dAtr10 > 0 and dBody3 / dAtr10 <= pDecelMax            // G4 desaceleración (D-2)
+    w  = pZoneW * dAtr
+    // SHORT en resistencia -----------------------------------------------
+    cR = zoneCenter(zoneH, dH, w)
+    touchS = not na(cR) and dH >= cR - w and dH <= cR + w       // G2 (ventana 1 vela D1; pTouchWin>1 aproximado por persistencia del array)
+    g3s = dErArr >= pErArrive or dRsi >= pRsiExt                // G3 (OR, AMBIG-2)
+    // G5 short: envolvente bajista / pinbar alto / doble techo (A3)
+    engS = dC < dO and dO >= dC2 and dC < dO2 and math.abs(dC-dO) > math.abs(dC2-dO2)
+    pinS = math.abs(dC-dO) > 0 and (dH - math.max(dO, dC)) >= pPinRatio * math.abs(dC-dO) and dC <= (dH+dL)/2 + 0.1*(dH-dL)
+    // G5c doble techo: dos pivotes en la zona activa + cierre bajo el neckline
+    zh1  = array.size(zoneH) >= 1 ? array.get(zoneH, array.size(zoneH)-1) : na
+    zh2  = array.size(zoneH) >= 2 ? array.get(zoneH, array.size(zoneH)-2) : na
+    dtS  = not na(zh1) and not na(zh2) and not na(cR) and
+         math.abs(zh1 - zh2) <= pDTopTol * dAtr and
+         math.abs(zh1 - cR) <= w and math.abs(zh2 - cR) <= w and
+         dC < dNeckS
+    g6s  = not (dC > (na(cR) ? 1e18 : cR + w))                  // G6 no invalidado
+    if g1 and touchS and g3s and g4 and (engS or pinS or dtS) and g6s
+        state := 1, dir := -1, biasAgeG := 0
+        zLo := cR - w, zHi := cR + w
+    // LONG en soporte (simétrico) ------------------------------------------
+    cS = zoneCenter(zoneL, dL, w)
+    touchL = not na(cS) and dL >= cS - w and dL <= cS + w
+    g3l = dErArr >= pErArrive or dRsi <= 100 - pRsiExt
+    engL = dC > dO and dO <= dC2 and dC > dO2 and math.abs(dC-dO) > math.abs(dC2-dO2)
+    pinL = math.abs(dC-dO) > 0 and (math.min(dO, dC) - dL) >= pPinRatio * math.abs(dC-dO) and dC >= (dH+dL)/2 - 0.1*(dH-dL)
+    // G5c doble suelo: dos pivotes en la zona activa + cierre sobre el neckline
+    zl1  = array.size(zoneL) >= 1 ? array.get(zoneL, array.size(zoneL)-1) : na
+    zl2  = array.size(zoneL) >= 2 ? array.get(zoneL, array.size(zoneL)-2) : na
+    dtL  = not na(zl1) and not na(zl2) and not na(cS) and
+         math.abs(zl1 - zl2) <= pDTopTol * dAtr and
+         math.abs(zl1 - cS) <= w and math.abs(zl2 - cS) <= w and
+         dC > dNeckL
+    g6l  = not (dC < (na(cS) ? -1e18 : cS - w))
+    if state == 0 and g1 and touchL and g3l and g4 and (engL or pinL or dtL) and g6l
+        state := 1, dir := 1, biasAgeG := 0
+        zLo := cS - w, zHi := cS + w
+
+// --- Módulo I: estructura y zona al cierre de cada vela H1 ---
+if newH1 and state >= 1 and state < 4
+    if state == 1
+        emaOk = dir < 0 ? iC < iEma : iC > iEma                             // I1
+        bosOk = dir < 0 ? (not na(slI1) and iC < slI1) : (not na(shI1) and iC > shI1)          // I2
+        seqOk = dir < 0 ? (not na(shI2) and shI1 < shI2) : (not na(slI2) and slI1 > slI2)      // I3
+        if emaOk and bosOk and seqOk
+            oImp := dir < 0 ? shI1 : slI1
+            fImp := dir < 0 ? iLow20 : iHigh20                              // A2
+            if math.abs(oImp - fImp) > syminfo.mintick
+                state := 2
+    if state == 2 or state == 3
+        // re-anclaje (R-C26)
+        fImp := dir < 0 ? math.min(fImp, iLo) : math.max(fImp, iHi)
+        px = dir < 0 ? iHi : iLo
+        reach   = dir < 0 ? px >= fib(0.382) : px <= fib(0.382)             // I4
+        chaseOk = math.abs(px - iEma) <= pChaseAtr * iAtr or (dir < 0 ? px >= iEma : px <= iEma)  // I5 (D-5)
+        invalid = dir < 0 ? iC > fib(1.0) : iC < fib(1.0)                    // I7
+        if invalid
+            state := 0, dir := 0
+        else if state == 2 and reach and chaseOk
+            state := 3, armedAgeI := 0
+        else if state == 3
+            armedAgeI += 1
+            if armedAgeI > pArmedWin                                         // I6 expiración
+                state := 2
+
+// --- Kill-switch (FASE-6 §2) ---
+var float eqDay = na, var float eqWeek = na, var float eqMonth = na
+if timeframe.change("D")
+    eqDay := strategy.equity
+if timeframe.change("W")
+    eqWeek := strategy.equity
+if timeframe.change("M")
+    eqMonth := strategy.equity
+ksDay   = not na(eqDay)   and strategy.equity <= eqDay   * (1 - pDdDay)
+ksWeek  = not na(eqWeek)  and strategy.equity <= eqWeek  * (1 - pDdWeek)
+ksMonth = not na(eqMonth) and strategy.equity <= eqMonth * (1 - pDdMonth)
+killSwitch = ksDay or ksWeek or ksMonth
+
+// --- Módulo P: gatillo al cierre de vela M5 (FASE-2 §5) ---
+trig = state == 3 and strategy.position_size == 0 and not killSwitch and
+     (dir < 0 ? ta.crossunder(close, pEma) : ta.crossover(close, pEma))
+
+if trig
+    // profundidad del retroceso → SL dinámico (R-C35 / D-1)
+    px    = dir < 0 ? iHi : iLo
+    depth = math.abs(px - fImp) / math.abs(oImp - fImp)
+    buf   = pBufAtr * iAtr
+    sl0   = depth <= 0.618 ? fib(0.75) + (dir < 0 ? buf : -buf)
+                           : (dir < 0 ? math.max(fib(1.0), nz(shI1, fib(1.0))) + buf
+                                      : math.min(fib(1.0), nz(slI1, fib(1.0))) - buf)
+    dist  = math.abs(sl0 - close)
+    // TP: extremo estructural previo (§7, aproximado con swings H1 confirmados)
+    tp    = dir < 0 ? math.min(nz(slI1, low), nz(slI2, low)) : math.max(nz(shI1, high), nz(shI2, high))
+    rr    = dist > 0 ? math.abs(close - tp) / dist : 0.0
+    okSanity = dist >= pStopMin * iAtr and dist <= pStopMax * iAtr and rr >= pRrMin
+    if okSanity
+        qty = math.min((pRiskPct * strategy.equity) / dist,
+                       pLevCap * strategy.equity / close)           // P37 (FASE-6 §5)
+        slPrice := sl0, tpPrice := tp
+        if dir < 0
+            strategy.entry("S", strategy.short, qty=qty)
+        else
+            strategy.entry("L", strategy.long, qty=qty)
+        state := 4
+    else
+        state := 2                                              // descarte por sanidad
+
+// --- Gestión: trailing EMA50 H1 al cierre de vela H1 (D-6) ---
+if strategy.position_size != 0 and newH1
+    cand = iEma + (strategy.position_size < 0 ? pBufAtr * iAtr : -pBufAtr * iAtr)
+    slPrice := strategy.position_size < 0 ? math.min(slPrice, cand) : math.max(slPrice, cand)
+strategy.exit("X-S", from_entry="S", stop=slPrice, limit=tpPrice)
+strategy.exit("X-L", from_entry="L", stop=slPrice, limit=tpPrice)
+if strategy.position_size == 0 and state == 4
+    state := 0, dir := 0                                        // posición cerrada → IDLE
+
+// ------------------------------- Visual --------------------------------------
+plot(pEma, "EMA50 M5", color=color.new(color.orange, 0))
+plot(strategy.position_size != 0 ? slPrice : na, "Stop", color=color.red,  style=plot.style_linebr)
+plot(strategy.position_size != 0 ? tpPrice : na, "TP",   color=color.teal, style=plot.style_linebr)
+bgcolor(state == 1 ? color.new(color.yellow, 92) : state == 2 ? color.new(color.blue, 92) :
+     state == 3 ? color.new(color.purple, 90) : na)
+alertcondition(trig, "SATAR-1 señal", "SATAR-1: gatillo {{ticker}} M5 — revisar dirección/estado")
