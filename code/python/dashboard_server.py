@@ -89,6 +89,10 @@ def get_engine_data(symbol: str):
     chart_candles = []
     for i in range(len(Hdf)):
         ts = int(Hdf.index[i].timestamp())
+        ev = h1_ema[i]
+        av = h1_atr[i]
+        rhv = r_high[i]
+        rlv = r_low[i]
         chart_candles.append({
             "time": ts,
             "open": float(Hdf["open"].iloc[i]),
@@ -96,10 +100,10 @@ def get_engine_data(symbol: str):
             "low": float(Hdf["low"].iloc[i]),
             "close": float(Hdf["close"].iloc[i]),
             "volume": float(Hdf["volume"].iloc[i]),
-            "ema50": float(h1_ema[i]) if not np.isnan(h1_ema[i]) else None,
-            "atr": float(h1_atr[i]) if not np.isnan(h1_atr[i]) else None,
-            "range_high": float(r_high[i]) if not np.isnan(r_high[i]) else None,
-            "range_low": float(r_low[i]) if not np.isnan(r_low[i]) else None,
+            "ema50": float(ev) if not math.isnan(ev) else None,
+            "atr": float(av) if not math.isnan(av) else None,
+            "range_high": float(rhv) if not math.isnan(rhv) else None,
+            "range_low": float(rlv) if not math.isnan(rlv) else None,
         })
 
     # Trades formateados
