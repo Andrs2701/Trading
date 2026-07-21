@@ -202,6 +202,9 @@ def get_engine_data(symbol: str):
         except Exception as e:
             print(f"[audit csv read] {e}")
 
+    if not trades_data and TRADES_STATIC:
+        trades_data = list(TRADES_STATIC.get(symbol, []))
+
     # Análisis de régimen seguro
     last_vol = safe_float(v[-1], 100000.0)
     vol_avg = safe_float(h1_vol_ma[-1], 100000.0)
@@ -295,7 +298,7 @@ def api_run_cycle():
 
 @app.route("/health")
 def health_check():
-    return jsonify({"status": "ok", "timestamp": time.time()})
+    return jsonify({"status": "ok", "version": "1.0.1", "timestamp": time.time()})
 
 # Hilo en segundo plano para ejecutar la estrategia 24/7 en Render
 def _start_background_bot():
