@@ -172,9 +172,9 @@ class TF:
         self.n = len(self.c)
 
 
-def resample(m5: pd.DataFrame, rule: str) -> pd.DataFrame:
+def resample(m5: pd.DataFrame, rule: str, offset: str | None = None) -> pd.DataFrame:
     agg = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
-    return m5.resample(rule, label="left", closed="left").agg(agg).dropna()
+    return m5.resample(rule, label="left", closed="left", offset=offset).agg(agg).dropna()
 
 
 # ----------------------------------------------------------------------------
@@ -193,12 +193,13 @@ class Trade:
 
 class Engine:
     def __init__(self, m5: pd.DataFrame, p: Params, symbol: str = "SYM",
-                 equity0: float = 10_000.0, hmm_mult=None, funnel: bool = False):
+                 equity0: float = 10_000.0, hmm_mult=None, funnel: bool = False,
+                 daily_offset: str | None = None):
         self.p, self.symbol = p, symbol
         self.m5df = m5
         self.P = TF(m5, p)
         self.Idf = resample(m5, "1h");  self.I = TF(self.Idf, p)
-        self.Gdf = resample(m5, "1D");  self.G = TF(self.Gdf, p)
+        self.Gdf = resample(m5, "1D", offset=daily_offset);  self.G = TF(self.Gdf, p)
         # índice de la última vela I/G CERRADA para cada vela M5 (cerrada)
         m5_close_ts = _sec(m5.index + pd.Timedelta(minutes=5))
         i_close_ts = _sec(self.Idf.index + pd.Timedelta(hours=1))
