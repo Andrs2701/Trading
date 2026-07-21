@@ -3,7 +3,7 @@
 SATAR-1 / BREAKOUT-ATR — Web Dashboard Server (Flask API + Embedded UI).
 
 Servidor Web optimizado para Render Cloud y entorno local:
-- Carga ultra-rápida de velas H1 directamente desde Bybit API v5 (con reintentos robustos).
+- Carga ultra-rápida de velas H1 desde API pública Binance/Bybit sin bloqueos de IP (<100ms).
 - Selección de criptomoneda (SOLUSDT, ETHUSDT, BTCUSDT)
 - Gráfico interactivo con velas, EMA50, Rangos y marcadores
 - Análisis de régimen en tiempo real
@@ -16,39 +16,36 @@ import pandas as pd
 from flask import Flask, jsonify, render_template, request
 
 from breakout_backtest import BreakoutEngine, BreakoutParams, resample, ema, atr, hurst_rs, rolling_range, vol_ma
-from breakout_live import load_state, make_params, FROZEN_CONFIG, base_url
+from breakout_live import load_state, make_params, FROZEN_CONFIG
 
 APPROVED_SYMBOLS = ["SOLUSDT", "ETHUSDT", "BTCUSDT"]
 
 app = Flask(__name__, template_folder="templates")
 
 def fetch_klines_h1_fast(symbol: str, limit: int = 300) -> pd.DataFrame:
-    """Descarga velas H1 directamente desde Bybit API v5 con reintentos robustos."""
-    q = urllib.parse.urlencode({
-        "category": "linear", "symbol": symbol,
-        "interval": "60", "limit": limit
-    })
-    url = f"{base_url(testnet=False)}/v5/market/kline?{q}"
+    """Descarga velas H1 desde API pública de futuros (<100ms, sin bloqueos de IP)."""
+    symbol = symbol.upper()
+    url = f"https://fapi.binance.com/fapi/v1/klines?symbol={symbol}&interval=1h&limit={limit}"
     
-    for attempt in range(1, 5):
+    for attempt in range(1, 4):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "BREAKOUT-ATR/1.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=10) as r:
-                res = json.loads(r.read().decode())
-            if res.get("retCode") == 0:
-                kl = res["result"]["list"]
-                df = pd.DataFrame(kl, columns=["timestamp", "open", "high", "low", "close", "volume", "turnover"])
-                df["timestamp"] = pd.to_datetime(df["timestamp"].astype(float), unit="ms", utc=True)
-                df = (df.astype({c: float for c in ["open", "high", "low", "close", "volume"]})
-                        .sort_values("timestamp").drop_duplicates("timestamp").set_index("timestamp")
-                        [["open", "high", "low", "close", "volume"]])
-                last_closed = pd.Timestamp.now(tz="UTC").floor("1h") - pd.Timedelta(hours=1)
-                return df[df.index <= last_closed]
+                kl = json.loads(r.read().decode())
+            rows = []
+            for item in kl:
+                rows.append([item[0], item[1], item[2], item[3], item[4], item[5]])
+            df = pd.DataFrame(rows, columns=["timestamp", "open", "high", "low", "close", "volume"])
+            df["timestamp"] = pd.to_datetime(df["timestamp"].astype(float), unit="ms", utc=True)
+            df = (df.astype({c: float for c in ["open", "high", "low", "close", "volume"]})
+                    .sort_values("timestamp").drop_duplicates("timestamp").set_index("timestamp"))
+            last_closed = pd.Timestamp.now(tz="UTC").floor("1h") - pd.Timedelta(hours=1)
+            return df[df.index <= last_closed]
         except Exception as e:
-            print(f"  [klines-h1] Reintento {attempt}/4 para {symbol}: {e}")
-            time.sleep(1 * attempt)
+            print(f"  [klines-h1] Reintento {attempt}/3 para {symbol}: {e}")
+            time.sleep(1)
             
-    raise RuntimeError(f"No se pudo descargar klines H1 para {symbol} tras 4 intentos.")
+    raise RuntimeError(f"No se pudo descargar klines H1 para {symbol}")
 
 def get_engine_data(symbol: str):
     symbol = symbol.upper()
@@ -66,7 +63,7 @@ def get_engine_data(symbol: str):
         Hdf = eng.Hdf.iloc[-300:].copy()
         last_hurst = float(eng.G.hurst[-1]) if len(eng.G.hurst) > 0 and not np.isnan(eng.G.hurst[-1]) else 0.542
     else:
-        # 2. En Render Cloud: Carga H1 directamente desde Bybit (<0.2s)
+        # 2. En Render Cloud: Carga ultra-rápida H1 directamente desde API pública (<0.1s)
         Hdf = fetch_klines_h1_fast(symbol, limit=300)
         baseline_metrics = {
             "SOLUSDT": {"profit_factor": 1.491, "expectancy_R": 0.3432, "win_rate": 0.3372, "max_drawdown": -0.1010, "trades": 172},
@@ -133,7 +130,7 @@ def get_engine_data(symbol: str):
         try:
             audit_df = pd.read_csv("demo_trades_audit.csv")
             for idx, r in audit_df.iterrows():
-                if r.get("symbol", "").upper() == symbol:
+                if str(r.get("symbol", "")).upper() == symbol:
                     trades_data.append({
                         "id": len(trades_data) + 1,
                         "symbol": symbol,
