@@ -111,6 +111,7 @@ El bot BREAKOUT-ATR/SOLUSDT lleva desplegado en Render (`trading-bot-satar.onren
 5. **Bug de seguridad preexistente en `check_position_closed()` (corregido).** Consultaba un endpoint privado de Bybit sin firmar; el error de autenticación resultante se interpretaba como "posición cerrada", arriesgando abrir una posición duplicada mientras la original seguía abierta en el exchange.
 6. **El hilo del bot se duerme con el plan free de Render (mitigado, no resuelto de raíz).** `_start_background_bot()` corre dentro del mismo proceso web; Render duerme ese proceso tras ~15 min sin tráfico HTTP, matando el hilo que evalúa el mercado cada 60s. Confirmado en vivo: `live_state` mostraba `last_signal_ts=null` y `position=null`. Se añadió un ping cada 10 min vía GitHub Actions (`.github/workflows/keepalive.yml`) como mitigación gratuita inmediata; la solución robusta es pasar a un plan de Render que no duerma, o a un servicio de tipo *Background Worker*.
 7. **Deploy directo a `main` sin CI/staging.** Se confirmó que un error de sintaxis introducido junto con el cambio de riesgo (punto 2) estuvo en producción ~90 minutos el 2026-07-20 antes de corregirse. No se cambió el flujo de deploy en esta sesión — queda como riesgo de proceso a decidir.
+8. **El histórico mostrado no era el que realmente opera en vivo (corregido).** `historical_trades_summary.json` (y `trades_data_static.py`, que el dashboard prioriza) se generaban con `AdvancedBreakoutEngine` + filtro de compresión de Bollinger D1 (`test_bb_squeeze.py`) — una variante que nunca pasó por WFO ni Monte Carlo, distinta de `BreakoutEngine` + `FROZEN_CONFIG` que sí corre en producción. La diferencia no era cosmética: para ETHUSDT la variante sin validar decía PF 0.715 (PERDEDOR, -$4,066.72); con el motor real da PF 1.016 (prácticamente neutro, +$643.55). `export_trades_json.py` corregido para usar el motor real.
 
 **Reconciliación de historial:** mientras se hacía esta auditoría, `origin/main` recibió una serie de hotfixes operativos directos (errores 500, carga de klines, filtros del dashboard) en paralelo. Ambos historiales se unificaron con un merge real (`--allow-unrelated-histories`, no squash ni force-push) que preserva la autoría completa de los dos lados.
 
@@ -122,3 +123,25 @@ Tras el veredicto NO APROBADO/VIABLE de las 4 hipótesis en cripto, se decidió 
 - **Adaptaciones (solo de infraestructura, no de reglas de trading):** fricciones calibradas por par (`satar_forex_config.py`), offset D1 a las 22:00 UTC (cierre NY, convención forex — requirió añadir un parámetro `offset` opcional a `resample()`/`Engine` en `satar_backtest.py`, retrocompatible).
 - **Folds:** 4 folds anclados-rodantes sobre 2010-2025, holdout desde 2025-01-01.
 - **Estado:** descarga de datos en curso (`download_forex.py`, ~16 años × 4 activos vía Dukascopy — proceso lento, horas de cómputo). WFO y Monte Carlo (`satar_wfo_forex.py`, `satar_montecarlo_forex.py`) implementados y con el fix de equity compuesto ya aplicado, pendientes de ejecutar hasta tener los datos completos.
+
+## 11. Exploración — ¿ampliar el universo de activos de BREAKOUT-ATR? (2026-07-21)
+
+Se evaluaron 5 candidatos nuevos (XRPUSDT, BNBUSDT ya tenían datos de Fase C; AVAXUSDT, ADAUSDT, LINKUSDT se descargaron) con la config congelada del WFO **sin re-optimizar nada** (`breakout_multiasset_frozen.py`, resultados en `results/breakout_multiasset_frozen.json`):
+
+| Activo | Trades | PF | Expectancy | MaxDD |
+|---|---|---|---|---|
+| SOLUSDT (referencia) | 404 | 1.245 | +0.176R | -20.3% |
+| **LINKUSDT** | 348 | 1.213 | **+0.163R** | -22.1% |
+| AVAXUSDT | 397 | 1.106 | +0.090R | -18.6% |
+| ETHUSDT | 506 | 1.016 | +0.028R | -48.7% |
+| XRPUSDT | 383 | 0.972 | -0.004R | -28.5% |
+| ADAUSDT | 374 | 0.968 | -0.007R | -32.2% |
+| BTCUSDT | 522 | 0.841 | -0.124R | -57.6% |
+| BNBUSDT | 446 | 0.792 | -0.155R | -54.2% |
+
+LINKUSDT y AVAXUSDT fueron los únicos con expectancy positiva comparable a SOLUSDT. Se re-corrió el WFO y Monte Carlo completos con el universo ampliado (BTC/ETH/SOL/XRP/BNB/LINK/AVAX, 7 activos; logs en `results/wfo_expanded_link_avax_log.txt` y `results/mc_expanded_link_avax_log.txt`) para ver si esto cambia el veredicto:
+
+- **WFO**: mean_oos_obj mejora de -0.3447 (5 activos) a **-0.0746** (7 activos) — mejora real, pero **sigue NO RENTABLE OOS**. Fold por fold: 2023 sigue claramente negativo (-0.092R, N=619), 2024 casi neutro (-0.015R), 2025 H1 positivo (+0.099R) — mismo patrón temporal que siempre: consolidación mata la estrategia, mercado expansivo la favorece.
+- **Monte Carlo**: expectancy sube a +0.0405R (12x vs 0.0032R), fricciones estresadas ahora SÍ pasan (antes fallaban), concentración de activo baja de 468% a 78.5% (LINK ahora comparte el peso con SOL) — todas mejoras reales. **Pero el drawdown de bootstrap NO mejora**: p95 sigue en -78.7% (peor caso -95.2%), prácticamente igual de catastrófico que antes (-84.1%).
+
+**Veredicto: NO agregar LINKUSDT/AVAXUSDT a la operativa en vivo.** El drawdown de Monte Carlo es la razón — un escenario plausible de -78% a -95% de la cuenta es inaceptable sin importar cuánto mejore la expectativa promedio. `wfo_results_breakout.json`/`montecarlo_results_breakout.json` en producción se dejaron en su versión original de 5 activos (respaldo en `results/*_5activos_original.json`) para no desalinear el dashboard, que solo muestra SOL/ETH/BTC.

@@ -14,6 +14,10 @@ from breakout_backtest import BreakoutParams, BreakoutEngine
 
 # ---------------------------------------------------------------------------
 ASSETS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"]
+# Exploracion 2026-07-21: se probo con +LINKUSDT +AVAXUSDT (ver docs/ESTADO-Y-CONTINUIDAD.md
+# S11). Mejora el OOS pero sigue NO RENTABLE; MC bootstrap DD no mejora (-78.7% p95).
+# No se dejo aqui por defecto para no sobreescribir results/wfo_results_breakout.json
+# (el que lee el dashboard) sin que quede claro por que cambiaron los numeros.
 WARMUP_DAYS = 120          # suficiente para Hurst y ATR
 EQUITY0 = 10_000.0
 MIN_TRADES = 5
@@ -213,7 +217,7 @@ def main():
         t0 = time.time()
         obj, m = eval_combo({}, _ts(FOLDS[0]["is"][0]), _ts(FOLDS[0]["is"][1]), ASSETS)
         dt = time.time() - t0
-        print(f"[time] 1 combo (5 activos) sobre IS de F1 (3 años): {dt:.1f}s")
+        print(f"[time] 1 combo ({len(ASSETS)} activos) sobre IS de F1 (3 años): {dt:.1f}s")
         print(f"[time] obj={obj:.4f} {m}")
         return
 

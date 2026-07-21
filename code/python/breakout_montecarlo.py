@@ -12,6 +12,7 @@ import pandas as pd
 from breakout_backtest import BreakoutParams, BreakoutEngine
 
 ASSETS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"]
+# Ver nota en breakout_wfo.py sobre la exploracion +LINKUSDT +AVAXUSDT del 2026-07-21.
 EQUITY0 = 10_000.0
 HOLDOUT_START = pd.Timestamp("2025-07-01", tz="UTC")
 
