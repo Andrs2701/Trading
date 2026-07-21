@@ -3,7 +3,7 @@
 SATAR-1 / BREAKOUT-ATR — Web Dashboard Server (Flask API + Embedded UI).
 
 Servidor Web optimizado para Render Cloud y entorno local:
-- Carga ultra-rápida y a prueba de fallos (cero errores 500).
+- Carga ultra-rápida y a prueba de fallos con sanitización total de datos (cero errores 500).
 - Selección de criptomoneda (SOLUSDT, ETHUSDT, BTCUSDT)
 - Gráfico interactivo con velas, EMA50, Rangos y marcadores
 - Análisis de régimen en tiempo real
@@ -21,6 +21,16 @@ from breakout_live import load_state, make_params, FROZEN_CONFIG
 APPROVED_SYMBOLS = ["SOLUSDT", "ETHUSDT", "BTCUSDT"]
 
 app = Flask(__name__, template_folder="templates")
+
+def safe_float(val, default: float = 0.0) -> float:
+    """Convierte cualquier valor a float nativo seguro (reemplaza NaN/Inf por default)."""
+    try:
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return default
+        return f
+    except Exception:
+        return default
 
 def fetch_klines_h1_fast(symbol: str, limit: int = 300) -> pd.DataFrame:
     """Descarga velas H1 desde Bybit con fallback a generador realista (cero errores 500)."""
@@ -76,7 +86,7 @@ def get_engine_data(symbol: str):
         metrics = eng.run()
         raw_trades = eng.trades
         Hdf = eng.Hdf.iloc[-300:].copy()
-        last_hurst = float(eng.G.hurst[-1]) if len(eng.G.hurst) > 0 and not np.isnan(eng.G.hurst[-1]) else 0.542
+        last_hurst = safe_float(eng.G.hurst[-1], 0.542) if len(eng.G.hurst) > 0 else 0.542
     else:
         # 2. En Render Cloud: Carga ultra-rápida H1 (<0.05s)
         Hdf = fetch_klines_h1_fast(symbol, limit=300)
@@ -110,15 +120,15 @@ def get_engine_data(symbol: str):
         rlv = r_low[i]
         chart_candles.append({
             "time": ts,
-            "open": float(Hdf["open"].iloc[i]),
-            "high": float(Hdf["high"].iloc[i]),
-            "low": float(Hdf["low"].iloc[i]),
-            "close": float(Hdf["close"].iloc[i]),
-            "volume": float(Hdf["volume"].iloc[i]),
-            "ema50": float(ev) if not math.isnan(ev) else None,
-            "atr": float(av) if not math.isnan(av) else None,
-            "range_high": float(rhv) if not math.isnan(rhv) else None,
-            "range_low": float(rlv) if not math.isnan(rlv) else None,
+            "open": safe_float(Hdf["open"].iloc[i]),
+            "high": safe_float(Hdf["high"].iloc[i]),
+            "low": safe_float(Hdf["low"].iloc[i]),
+            "close": safe_float(Hdf["close"].iloc[i]),
+            "volume": safe_float(Hdf["volume"].iloc[i]),
+            "ema50": safe_float(ev, default=None) if not math.isnan(ev) else None,
+            "atr": safe_float(av, default=None) if not math.isnan(av) else None,
+            "range_high": safe_float(rhv, default=None) if not math.isnan(rhv) else None,
+            "range_low": safe_float(rlv, default=None) if not math.isnan(rlv) else None,
         })
 
     # Trades formateados
@@ -130,14 +140,14 @@ def get_engine_data(symbol: str):
             "direction": "LONG" if t.direction > 0 else "SHORT",
             "entry_time": pd.to_datetime(t.t_entry, unit="s", utc=True).strftime("%Y-%m-%d %H:%M"),
             "exit_time": pd.to_datetime(t.t_exit, unit="s", utc=True).strftime("%Y-%m-%d %H:%M") if t.t_exit else "-",
-            "entry_price": round(t.entry, 2),
-            "exit_price": round(t.exit, 2) if t.exit else 0.0,
-            "sl_init": round(t.sl_init, 2),
-            "tp": round(t.tp, 2),
-            "qty": round(t.qty, 4),
-            "pnl": round(t.pnl, 2),
-            "r_multiple": round(t.r, 2),
-            "reason": t.reason or "open"
+            "entry_price": safe_float(t.entry),
+            "exit_price": safe_float(t.exit),
+            "sl_init": safe_float(t.sl_init),
+            "tp": safe_float(t.tp),
+            "qty": safe_float(t.qty),
+            "pnl": safe_float(t.pnl),
+            "r_multiple": safe_float(t.r),
+            "reason": str(t.reason or "open")
         })
 
     # Si hay archivo audit de demo, añadir trades de la auditoría en vivo
@@ -149,38 +159,38 @@ def get_engine_data(symbol: str):
                     trades_data.append({
                         "id": len(trades_data) + 1,
                         "symbol": symbol,
-                        "direction": r.get("side", "LONG"),
+                        "direction": str(r.get("side", "LONG")),
                         "entry_time": str(r.get("entry_time", "-")),
                         "exit_time": str(r.get("exit_time", "-")),
-                        "entry_price": float(r.get("entry_price", 0)),
-                        "exit_price": float(r.get("exit_price", 0)),
-                        "sl_init": float(r.get("sl_init", 0)),
-                        "tp": float(r.get("tp", 0)),
-                        "qty": float(r.get("qty", 0)),
-                        "pnl": float(r.get("pnl", 0)),
-                        "r_multiple": float(r.get("r_multiple", 0)),
+                        "entry_price": safe_float(r.get("entry_price", 0)),
+                        "exit_price": safe_float(r.get("exit_price", 0)),
+                        "sl_init": safe_float(r.get("sl_init", 0)),
+                        "tp": safe_float(r.get("tp", 0)),
+                        "qty": safe_float(r.get("qty", 0)),
+                        "pnl": safe_float(r.get("pnl", 0)),
+                        "r_multiple": safe_float(r.get("r_multiple", 0)),
                         "reason": str(r.get("reason", "live_demo"))
                     })
         except Exception as e:
             print(f"[audit csv read] {e}")
 
-    # Análisis de régimen
-    last_vol = float(v[-1])
-    vol_avg = float(h1_vol_ma[-1]) if not math.isnan(h1_vol_ma[-1]) else 1.0
-    vol_ratio = float(round(last_vol / (vol_avg + 1e-12), 2))
-    last_body = float(abs(c[-1] - Hdf["open"].iloc[-1]))
-    last_atr_h1 = float(h1_atr[-1]) if not math.isnan(h1_atr[-1]) else 1.0
-    body_atr_ratio = float(round(last_body / (last_atr_h1 + 1e-12), 2))
+    # Análisis de régimen seguro
+    last_vol = safe_float(v[-1], 100000.0)
+    vol_avg = safe_float(h1_vol_ma[-1], 100000.0)
+    vol_ratio = safe_float(round(last_vol / (vol_avg + 1e-12), 2), 1.0)
+    last_body = safe_float(abs(c[-1] - Hdf["open"].iloc[-1]), 1.0)
+    last_atr_h1 = safe_float(h1_atr[-1], 1.0)
+    body_atr_ratio = safe_float(round(last_body / (last_atr_h1 + 1e-12), 2), 1.0)
 
     analysis = {
-        "hurst_exponent": float(round(last_hurst, 3)),
+        "hurst_exponent": safe_float(round(last_hurst, 3), 0.542),
         "hurst_status": "Persistente (Tendencia)" if last_hurst >= 0.52 else "Normal",
         "hurst_ok": bool(last_hurst >= p.hurst_filter),
         "vol_ratio": vol_ratio,
-        "vol_ok": bool(vol_ratio > float(p.vol_spike_mult)),
+        "vol_ok": bool(vol_ratio > safe_float(p.vol_spike_mult, 1.8)),
         "body_atr_ratio": body_atr_ratio,
-        "body_atr_ok": bool(body_atr_ratio > float(p.range_expansion_mult)),
-        "funnel": {str(k): int(v) for k, v in metrics.get("counters", {}).items()}
+        "body_atr_ok": bool(body_atr_ratio > safe_float(p.range_expansion_mult, 1.4)),
+        "funnel": {str(k): int(safe_float(v)) for k, v in metrics.get("counters", {}).items()}
     }
 
     live_st = load_state(symbol)
@@ -202,11 +212,11 @@ def get_engine_data(symbol: str):
         "analysis": analysis,
         "demo": demo_info,
         "config": {
-            "vol_spike_mult": p.vol_spike_mult,
-            "range_expansion_mult": p.range_expansion_mult,
-            "stop_atr_mult": p.stop_atr_mult,
-            "trail_buf_atr": p.trail_buf_atr,
-            "hurst_filter": p.hurst_filter
+            "vol_spike_mult": safe_float(p.vol_spike_mult),
+            "range_expansion_mult": safe_float(p.range_expansion_mult),
+            "stop_atr_mult": safe_float(p.stop_atr_mult),
+            "trail_buf_atr": safe_float(p.trail_buf_atr),
+            "hurst_filter": safe_float(p.hurst_filter)
         }
     }, None, ""
 
