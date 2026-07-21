@@ -1,0 +1,23 @@
+name: Keep Render bot awake
+
+# El servicio de Render corre en el plan free (render.yaml: plan: free), que
+# suspende el proceso tras ~15 min sin trafico HTTP entrante. El bot de
+# trading (dashboard_server.py::_start_background_bot) vive en un hilo de
+# fondo DENTRO de ese mismo proceso web, asi que cuando Render lo duerme,
+# el hilo que evalua el mercado cada 60s tambien se detiene por completo.
+# Este ping periodico mantiene el proceso despierto para que el bot pueda
+# operar de forma continua. No sustituye pasar a un plan pago (mas robusto:
+# no depende de que este cron corra a tiempo), pero es la mitigacion
+# inmediata sin costo.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          curl -fsS --max-time 20 https://trading-bot-satar.onrender.com/health || echo "ping fallo (el servicio pudo estar despertando)"
