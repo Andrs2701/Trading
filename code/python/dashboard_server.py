@@ -19,6 +19,11 @@ from flask import Flask, jsonify, render_template, request
 from breakout_backtest import BreakoutEngine, BreakoutParams, resample, ema, atr, hurst_rs, rolling_range, vol_ma
 from breakout_live import load_state, make_params, FROZEN_CONFIG
 
+try:
+    from trades_data_static import TRADES_STATIC
+except ImportError:
+    TRADES_STATIC = {}
+
 APPROVED_SYMBOLS = ["SOLUSDT", "ETHUSDT", "BTCUSDT"]
 
 app = Flask(__name__, template_folder="templates")
@@ -152,15 +157,26 @@ def get_engine_data(symbol: str):
                 "reason": str(t.reason or "open")
             })
     else:
-        # Cargar trades pre-calculados del archivo JSON
-        json_path = os.path.join(os.path.dirname(__file__), "historical_trades_summary.json")
-        if os.path.exists(json_path):
-            try:
-                with open(json_path, encoding="utf-8") as f:
-                    hist_map = json.load(f)
-                    trades_data = hist_map.get(symbol, [])
-            except Exception as e:
-                print(f"[hist json read] {e}")
+        # 1. Intentar cargar desde el módulo estático importado
+        if TRADES_STATIC and symbol in TRADES_STATIC:
+            trades_data = list(TRADES_STATIC[symbol])
+        else:
+            # 2. Intentar cargar desde el archivo JSON si existe
+            json_candidates = [
+                "historical_trades_summary.json",
+                os.path.join(os.path.dirname(__file__), "historical_trades_summary.json"),
+                os.path.join("code", "python", "historical_trades_summary.json"),
+            ]
+            for jp in json_candidates:
+                if os.path.exists(jp):
+                    try:
+                        with open(jp, encoding="utf-8") as f:
+                            hist_map = json.load(f)
+                            trades_data = hist_map.get(symbol, [])
+                            if trades_data:
+                                break
+                    except Exception as e:
+                        print(f"[hist json read {jp}] {e}")
 
     # Si hay archivo audit de demo, añadir trades de la auditoría en vivo al final
     if os.path.exists("demo_trades_audit.csv"):
