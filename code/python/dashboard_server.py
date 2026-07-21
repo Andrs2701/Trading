@@ -17,7 +17,7 @@ import pandas as pd
 from flask import Flask, jsonify, render_template, request
 
 from breakout_backtest import BreakoutEngine, BreakoutParams, resample, ema, atr, hurst_rs, rolling_range, vol_ma
-from breakout_live import load_state, make_params, FROZEN_CONFIG
+from breakout_live import load_state, make_params, FROZEN_CONFIG, load_demo_tracker
 
 try:
     from trades_data_static import TRADES_STATIC
@@ -37,6 +37,151 @@ def safe_float(val, default: float = 0.0) -> float:
         return f
     except Exception:
         return default
+
+def load_historical_trades(symbol: str) -> list:
+    """Carga la lista de trades del backtest histórico (simulación, no operaciones
+    reales) para un símbolo, desde el módulo estático precompilado o, si no está
+    disponible, desde el JSON de respaldo. Fuente única para que las métricas y la
+    tabla de trades nunca se desincronicen entre sí."""
+    symbol = symbol.upper()
+    if TRADES_STATIC and symbol in TRADES_STATIC:
+        return list(TRADES_STATIC[symbol])
+    json_candidates = [
+        "historical_trades_summary.json",
+        os.path.join(os.path.dirname(__file__), "historical_trades_summary.json"),
+        os.path.join("code", "python", "historical_trades_summary.json"),
+    ]
+    for jp in json_candidates:
+        if os.path.exists(jp):
+            try:
+                with open(jp, encoding="utf-8") as f:
+                    hist_map = json.load(f)
+                trades = hist_map.get(symbol, [])
+                if trades:
+                    return trades
+            except Exception as e:
+                print(f"[hist json read {jp}] {e}")
+    return []
+
+def compute_metrics_from_trades(trades: list, equity0: float = 10000.0) -> dict:
+    """Calcula Profit Factor, Win Rate, Expectancy(R), Max Drawdown y PnL total
+    DIRECTAMENTE desde la lista de trades que se muestra en el dashboard. Se usa
+    en vez de cifras fijas para garantizar que el resumen nunca contradiga (ni
+    mejore artificialmente) el histórico de operaciones realmente desplegado."""
+    if not trades:
+        return {"profit_factor": 0.0, "expectancy_R": 0.0, "win_rate": 0.0,
+                "max_drawdown": 0.0, "trades": 0, "total_pnl": 0.0}
+    pnls = [safe_float(t.get("pnl")) for t in trades]
+    rs = [safe_float(t.get("r_multiple")) for t in trades]
+    wins = [p for p in pnls if p > 0]
+    losses = [p for p in pnls if p <= 0]
+    gross_win = sum(wins)
+    gross_loss = abs(sum(losses))
+    if gross_loss > 1e-9:
+        profit_factor = gross_win / gross_loss
+    else:
+        profit_factor = 999.0 if gross_win > 0 else 0.0
+    win_rate = (len(wins) / len(pnls)) if pnls else 0.0
+    expectancy_R = (sum(rs) / len(rs)) if rs else 0.0
+
+    equity = equity0
+    peak = equity0
+    max_dd = 0.0
+    for p in pnls:
+        equity += p
+        peak = max(peak, equity)
+        if peak > 0:
+            max_dd = min(max_dd, (equity - peak) / peak)
+
+    return {
+        "profit_factor": safe_float(round(profit_factor, 3)),
+        "expectancy_R": safe_float(round(expectancy_R, 4)),
+        "win_rate": safe_float(round(win_rate, 4)),
+        "max_drawdown": safe_float(round(max_dd, 4)),
+        "trades": len(trades),
+        "total_pnl": safe_float(round(sum(pnls), 2)),
+    }
+
+def load_real_verdict() -> dict:
+    """Lee el veredicto REAL de Walk-Forward Optimization y Monte Carlo desde los
+    resultados versionados en resultados/. Si esos archivos no están disponibles
+    en el entorno de despliegue, usa como respaldo el mismo veredicto histórico
+    documentado (NO RENTABLE OOS) -- bajo ninguna circunstancia se debe ocultar
+    o suavizar este resultado ni mostrar un veredicto por defecto positivo."""
+    result = {
+        "mean_oos_obj": -0.3447,
+        "wfe_verdict": "NO RENTABLE OOS (mean_oos=-0.3447<=0)",
+        "rentable_oos": False,
+        "mc_expectancy_p25": -0.0253,
+        "mc_pasa_p25_positivo": False,
+        "max_share_activo_pct": 467.6,
+        "alarma_concentracion_activo": True,
+        "source": "hardcoded_fallback",
+    }
+
+    wfo_candidates = [
+        os.path.join("results", "wfo_results_breakout.json"),
+        os.path.join(os.path.dirname(__file__), "results", "wfo_results_breakout.json"),
+    ]
+    for wp in wfo_candidates:
+        if os.path.exists(wp):
+            try:
+                with open(wp, encoding="utf-8") as f:
+                    wfo = json.load(f)
+                result["mean_oos_obj"] = safe_float(wfo.get("mean_oos_obj"), result["mean_oos_obj"])
+                result["wfe_verdict"] = str(wfo.get("wfe_verdict", result["wfe_verdict"]))
+                result["rentable_oos"] = bool(wfo.get("rentable_oos", False))
+                result["source"] = "wfo_results_breakout.json"
+                break
+            except Exception as e:
+                print(f"[verdict wfo read {wp}] {e}")
+
+    mc_candidates = [
+        os.path.join("results", "montecarlo_results_breakout.json"),
+        os.path.join(os.path.dirname(__file__), "results", "montecarlo_results_breakout.json"),
+    ]
+    for mp in mc_candidates:
+        if os.path.exists(mp):
+            try:
+                with open(mp, encoding="utf-8") as f:
+                    mc = json.load(f)
+                fr = mc.get("mc2_frictions", {})
+                est = mc.get("estabilidad", {})
+                result["mc_expectancy_p25"] = safe_float(fr.get("expectancy_p25"), result["mc_expectancy_p25"])
+                result["mc_pasa_p25_positivo"] = bool(fr.get("pasa_p25_positivo", False))
+                result["max_share_activo_pct"] = safe_float(est.get("max_share_activo"), 4.676) * 100.0
+                result["alarma_concentracion_activo"] = bool(est.get("alarma_concentracion_activo", False))
+                break
+            except Exception as e:
+                print(f"[verdict mc read {mp}] {e}")
+
+    return result
+
+def get_portfolio_summary() -> dict:
+    """Resumen honesto de los 3 activos operados por BREAKOUT-ATR, cada uno con
+    sus métricas reales del backtest histórico (2020-2026), más el veredicto
+    real de validación (WFO + Monte Carlo). Nunca debe mostrar solo el activo
+    ganador (SOLUSDT) ocultando que ETHUSDT y BTCUSDT pierden dinero."""
+    assets = {}
+    total_pnl = 0.0
+    for sym in APPROVED_SYMBOLS:
+        trades = load_historical_trades(sym)
+        m = compute_metrics_from_trades(trades)
+        m["symbol"] = sym
+        if m["total_pnl"] > 0:
+            m["result_label"] = "GANADOR"
+        elif m["total_pnl"] < 0:
+            m["result_label"] = "PERDEDOR"
+        else:
+            m["result_label"] = "NEUTRO"
+        assets[sym] = m
+        total_pnl += m["total_pnl"]
+
+    return {
+        "assets": assets,
+        "portfolio_total_pnl": safe_float(round(total_pnl, 2)),
+        "verdict": load_real_verdict(),
+    }
 
 def fetch_klines_h1_fast(symbol: str, limit: int = 300) -> pd.DataFrame:
     """Descarga velas H1 desde Bybit con fallback a generador realista (cero errores 500)."""
@@ -157,26 +302,8 @@ def get_engine_data(symbol: str):
                 "reason": str(t.reason or "open")
             })
     else:
-        # 1. Intentar cargar desde el módulo estático importado
-        if TRADES_STATIC and symbol in TRADES_STATIC:
-            trades_data = list(TRADES_STATIC[symbol])
-        else:
-            # 2. Intentar cargar desde el archivo JSON si existe
-            json_candidates = [
-                "historical_trades_summary.json",
-                os.path.join(os.path.dirname(__file__), "historical_trades_summary.json"),
-                os.path.join("code", "python", "historical_trades_summary.json"),
-            ]
-            for jp in json_candidates:
-                if os.path.exists(jp):
-                    try:
-                        with open(jp, encoding="utf-8") as f:
-                            hist_map = json.load(f)
-                            trades_data = hist_map.get(symbol, [])
-                            if trades_data:
-                                break
-                    except Exception as e:
-                        print(f"[hist json read {jp}] {e}")
+        # Backtest histórico (simulación 2020-2026, no son operaciones reales)
+        trades_data = load_historical_trades(symbol)
 
     # Si hay archivo audit de demo, añadir trades de la auditoría en vivo al final
     if os.path.exists("demo_trades_audit.csv"):
@@ -205,6 +332,19 @@ def get_engine_data(symbol: str):
     if not trades_data and TRADES_STATIC:
         trades_data = list(TRADES_STATIC.get(symbol, []))
 
+    # En modo Cloud/fallback (sin motor local), las métricas de cabecera se
+    # recalculan SIEMPRE desde trades_data ya finalizado, para que Profit Factor /
+    # Win Rate / Expectancy / Max Drawdown NUNCA contradigan el histórico mostrado
+    # en la tabla (antes, "metrics" venía de un diccionario fijo desincronizado).
+    if not raw_trades and trades_data:
+        real_m = compute_metrics_from_trades(trades_data)
+        metrics["profit_factor"] = real_m["profit_factor"]
+        metrics["expectancy_R"] = real_m["expectancy_R"]
+        metrics["win_rate"] = real_m["win_rate"]
+        metrics["max_drawdown"] = real_m["max_drawdown"]
+        metrics["trades"] = real_m["trades"]
+        metrics["total_pnl"] = real_m["total_pnl"]
+
     # Análisis de régimen seguro
     last_vol = safe_float(v[-1], 100000.0)
     vol_avg = safe_float(h1_vol_ma[-1], 100000.0)
@@ -225,15 +365,36 @@ def get_engine_data(symbol: str):
     }
 
     live_st = load_state(symbol)
-    demo_info = {
-        "active": True,
-        "phase": "FASE 9 (DEMO 90 DÍAS - MODERADA)",
-        "equity": 200.0,
-        "risk_usd": 4.00,
-        "risk_pct": 0.02,
-        "target_pf": 1.50,
-        "target_dd": -0.20
-    }
+    # Fuente de verdad: demo_phase_tracker.json (lo actualiza breakout_live.py
+    # ::register_demo_trade en cada cierre real). Fallback conservador si el
+    # archivo no existe todavia -- SIEMPRE alineado con render.yaml
+    # (TRADING_RISK_PCT=0.01), nunca con la config de riesgo elevado que se
+    # revirtio (ver docs/BREAKOUT-resultados-veredicto.md).
+    _tr = load_demo_tracker()
+    if _tr:
+        demo_info = {
+            "active": True,
+            "phase": "FASE 9 (DEMO 90 DÍAS)",
+            "equity": safe_float(_tr.get("current_equity"), 200.0),
+            "risk_usd": safe_float(_tr.get("risk_usd"), 2.00),
+            "risk_pct": safe_float(_tr.get("risk_pct"), 0.01),
+            "target_pf": 1.50,
+            "target_dd": -0.10,
+            "total_trades": int(_tr.get("total_trades", 0) or 0),
+            "total_pnl": safe_float(_tr.get("total_pnl"), 0.0),
+        }
+    else:
+        demo_info = {
+            "active": True,
+            "phase": "FASE 9 (DEMO 90 DÍAS)",
+            "equity": 200.0,
+            "risk_usd": 2.00,
+            "risk_pct": 0.01,
+            "target_pf": 1.50,
+            "target_dd": -0.10,
+            "total_trades": 0,
+            "total_pnl": 0.0,
+        }
 
     return {
         "symbol": symbol,
@@ -273,6 +434,18 @@ def api_data():
 @app.route("/api/symbols")
 def api_symbols():
     return jsonify({"symbols": APPROVED_SYMBOLS})
+
+@app.route("/api/portfolio_summary")
+def api_portfolio_summary():
+    """Resumen honesto de los 3 activos (SOLUSDT, ETHUSDT, BTCUSDT) + veredicto
+    real de validación (WFO/Monte Carlo). Ver get_portfolio_summary()."""
+    try:
+        return jsonify(get_portfolio_summary())
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[API ERROR portfolio_summary] {e}\n{tb}")
+        return jsonify({"error": str(e), "traceback": tb}), 500
 
 @app.route("/api/run_cycle", methods=["POST"])
 def api_run_cycle():

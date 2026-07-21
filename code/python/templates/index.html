@@ -120,6 +120,118 @@
             box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
         }
 
+        /* Verdict Banner — veredicto real de validación (WFO + Monte Carlo) */
+        .verdict-banner {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(15, 23, 42, 0.8));
+        }
+
+        .verdict-banner .verdict-icon {
+            font-size: 26px;
+            line-height: 1.1;
+            flex-shrink: 0;
+        }
+
+        .verdict-banner .verdict-body {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .verdict-banner .verdict-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--accent-red);
+            letter-spacing: -0.2px;
+        }
+
+        .verdict-banner .verdict-detail {
+            font-size: 12.5px;
+            line-height: 1.65;
+            color: var(--text-main);
+        }
+
+        .verdict-banner .verdict-detail b {
+            color: #fca5a5;
+            font-weight: 700;
+        }
+
+        .verdict-banner .verdict-detail .ok-note {
+            color: var(--text-muted);
+        }
+
+        /* Per-asset honest summary (Backtest, not real trades) */
+        .section-label {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .section-label h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .section-label span {
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+
+        .assets-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .asset-summary-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-left: 3px solid var(--border-card);
+        }
+
+        .asset-summary-card.is-winner { border-left-color: var(--accent-green); }
+        .asset-summary-card.is-loser { border-left-color: var(--accent-red); }
+
+        .asset-summary-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .asset-summary-head .sym {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .asset-summary-pnl {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .asset-summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+
+        .asset-summary-row b {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -353,7 +465,68 @@
         </div>
     </header>
 
+    <!-- Verdict Banner: veredicto REAL de validación (Walk-Forward Optimization + Monte Carlo) -->
+    <div class="glass-card verdict-banner" id="verdict-banner">
+        <div class="verdict-icon">⚠️</div>
+        <div class="verdict-body">
+            <span class="verdict-title" id="verdict-title">Estrategia EN VALIDACIÓN — sin ventaja estadística confirmada fuera de muestra (NO RENTABLE OOS)</span>
+            <span class="verdict-detail" id="verdict-detail">
+                El backtest 2020–2026 muestra resultados mixtos por activo: solo SOLUSDT es rentable; ETHUSDT y BTCUSDT pierden dinero
+                en el mismo periodo. En la validación Walk-Forward (fuera de muestra) el objetivo promedio fue
+                <b id="verdict-mean-oos">mean_oos = -0.3447</b> (se requiere &gt; 0 para aprobar) →
+                <b id="verdict-wfe-text">"NO RENTABLE OOS"</b>. El Monte Carlo con fricción realista da una expectancia
+                del percentil 25 negativa (<b id="verdict-mc-p25">-0.025R</b>) y una concentración de
+                <b id="verdict-concentration">467%</b> del resultado total en un único activo (SOLUSDT).
+                <span class="ok-note">No se recomienda operar con capital real hasta completar la demo de 90 días con resultado positivo.</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Resumen por Activo: los 3 símbolos con sus métricas reales (nunca solo el ganador) -->
+    <div class="section-label">
+        <h3>Resumen por Activo — Backtest Histórico 2020–2026</h3>
+        <span>Simulación sobre datos pasados. No son operaciones reales.</span>
+    </div>
+    <div class="assets-summary-grid" id="assets-summary-grid">
+        <div class="glass-card asset-summary-card is-winner" data-symbol="SOLUSDT">
+            <div class="asset-summary-head">
+                <span class="sym">SOLUSDT</span>
+                <span class="badge pass">GANADOR</span>
+            </div>
+            <span class="asset-summary-pnl green">+$7,407.72</span>
+            <div class="asset-summary-row"><span>Profit Factor</span><b>1.491</b></div>
+            <div class="asset-summary-row"><span>Win Rate</span><b>33.7%</b></div>
+            <div class="asset-summary-row"><span>Expectancy</span><b>+0.343R</b></div>
+            <div class="asset-summary-row"><span>Trades</span><b>172</b></div>
+        </div>
+        <div class="glass-card asset-summary-card is-loser" data-symbol="ETHUSDT">
+            <div class="asset-summary-head">
+                <span class="sym">ETHUSDT</span>
+                <span class="badge fail">PERDEDOR</span>
+            </div>
+            <span class="asset-summary-pnl red">-$4,066.72</span>
+            <div class="asset-summary-row"><span>Profit Factor</span><b>0.715</b></div>
+            <div class="asset-summary-row"><span>Win Rate</span><b>19.9%</b></div>
+            <div class="asset-summary-row"><span>Expectancy</span><b>-0.222R</b></div>
+            <div class="asset-summary-row"><span>Trades</span><b>221</b></div>
+        </div>
+        <div class="glass-card asset-summary-card is-loser" data-symbol="BTCUSDT">
+            <div class="asset-summary-head">
+                <span class="sym">BTCUSDT</span>
+                <span class="badge fail">PERDEDOR</span>
+            </div>
+            <span class="asset-summary-pnl red">-$269.23</span>
+            <div class="asset-summary-row"><span>Profit Factor</span><b>0.982</b></div>
+            <div class="asset-summary-row"><span>Win Rate</span><b>26.0%</b></div>
+            <div class="asset-summary-row"><span>Expectancy</span><b>+0.004R</b></div>
+            <div class="asset-summary-row"><span>Trades</span><b>200</b></div>
+        </div>
+    </div>
+
     <!-- Key Metrics Grid -->
+    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+        Métricas del activo seleccionado (<b id="metrics-symbol-label" style="color: var(--text-main);">SOLUSDT</b>) — resultado del backtest histórico, no de una cuenta real.
+    </p>
     <div class="metrics-grid">
         <div class="glass-card metric-card">
             <span class="metric-label">Profit Factor</span>
@@ -377,7 +550,7 @@
         </div>
         <div class="glass-card metric-card">
             <span class="metric-label">Riesgo Fijo ($ / Trade)</span>
-            <span class="metric-value green" style="font-size: 18px; margin-top: 4px;" id="val-risk">$4.00 (2%)</span>
+            <span class="metric-value green" style="font-size: 18px; margin-top: 4px;" id="val-risk">$2.00 (1%)</span>
         </div>
     </div>
 
@@ -447,8 +620,8 @@
     <div class="glass-card">
         <div class="table-header">
             <div>
-                <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px;">Histórico de Operaciones Auditadas</h3>
-                <span style="font-size: 12px; color: var(--text-muted);">Filtra por Año, Mes, Dirección o Resultado</span>
+                <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px;">Backtest Histórico 2020–2026 (simulación, no son operaciones reales)</h3>
+                <span style="font-size: 12px; color: var(--text-muted);">Resultado de aplicar la estrategia sobre datos pasados. Filtra por Año, Mes, Dirección o Resultado</span>
             </div>
         </div>
 
@@ -691,6 +864,8 @@
         async function loadSymbolData(symbol) {
             currentSymbol = symbol;
             document.getElementById('chart-symbol-badge').innerText = symbol;
+            const symLabel = document.getElementById('metrics-symbol-label');
+            if (symLabel) symLabel.innerText = symbol;
 
             try {
                 const res = await fetch(`/api/data?symbol=${symbol}&t=${Date.now()}`);
@@ -708,6 +883,10 @@
                 document.getElementById('val-wr').innerText = ((m.win_rate || 0) * 100).toFixed(1) + '%';
                 document.getElementById('val-dd').innerText = ((m.max_drawdown || 0) * 100).toFixed(1) + '%';
                 document.getElementById('val-trades').innerText = m.trades || 0;
+                if (data.demo) {
+                    const riskEl = document.getElementById('val-risk');
+                    if (riskEl) riskEl.innerText = `$${data.demo.risk_usd.toFixed(2)} (${(data.demo.risk_pct * 100).toFixed(0)}%)`;
+                }
 
                 // Update Analysis
                 const a = data.analysis;
@@ -742,6 +921,73 @@
 
             } catch (err) {
                 console.error('Error cargando datos:', err);
+            }
+        }
+
+        function fmtUsd(v) {
+            const sign = v >= 0 ? '+' : '-';
+            return sign + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Carga el resumen HONESTO de los 3 activos (nunca solo el ganador) y el
+        // veredicto real de validación (Walk-Forward Optimization + Monte Carlo).
+        // Si la petición falla, el HTML ya trae precargadas las mismas cifras
+        // reales como respaldo estático, así que nunca se oculta el veredicto.
+        async function loadPortfolioSummary() {
+            try {
+                const res = await fetch(`/api/portfolio_summary?t=${Date.now()}`);
+                const data = await res.json();
+                if (data.error) {
+                    console.error('portfolio_summary error:', data.error);
+                    return;
+                }
+
+                // Tarjetas por activo (SOLUSDT, ETHUSDT, BTCUSDT) con métricas reales
+                const grid = document.getElementById('assets-summary-grid');
+                if (grid && data.assets) {
+                    const order = ['SOLUSDT', 'ETHUSDT', 'BTCUSDT'];
+                    grid.innerHTML = order.filter(s => data.assets[s]).map(sym => {
+                        const a = data.assets[sym];
+                        const isWinner = a.total_pnl > 0;
+                        const cls = isWinner ? 'is-winner' : 'is-loser';
+                        const badgeCls = isWinner ? 'pass' : 'fail';
+                        const pnlCls = isWinner ? 'green' : 'red';
+                        const expSign = a.expectancy_R > 0 ? '+' : '';
+                        return `
+                        <div class="glass-card asset-summary-card ${cls}" data-symbol="${sym}">
+                            <div class="asset-summary-head">
+                                <span class="sym">${sym}</span>
+                                <span class="badge ${badgeCls}">${a.result_label}</span>
+                            </div>
+                            <span class="asset-summary-pnl ${pnlCls}">${fmtUsd(a.total_pnl)}</span>
+                            <div class="asset-summary-row"><span>Profit Factor</span><b>${a.profit_factor.toFixed(3)}</b></div>
+                            <div class="asset-summary-row"><span>Win Rate</span><b>${(a.win_rate * 100).toFixed(1)}%</b></div>
+                            <div class="asset-summary-row"><span>Expectancy</span><b>${expSign}${a.expectancy_R.toFixed(3)}R</b></div>
+                            <div class="asset-summary-row"><span>Trades</span><b>${a.trades}</b></div>
+                        </div>`;
+                    }).join('');
+                }
+
+                // Banner de veredicto real (WFO + Monte Carlo)
+                const v = data.verdict || {};
+                const meanOosEl = document.getElementById('verdict-mean-oos');
+                if (meanOosEl && typeof v.mean_oos_obj === 'number') {
+                    meanOosEl.innerText = `mean_oos = ${v.mean_oos_obj.toFixed(4)}`;
+                }
+                const wfeEl = document.getElementById('verdict-wfe-text');
+                if (wfeEl && v.wfe_verdict) {
+                    wfeEl.innerText = `"${String(v.wfe_verdict).split(' (')[0]}"`;
+                }
+                const mcEl = document.getElementById('verdict-mc-p25');
+                if (mcEl && typeof v.mc_expectancy_p25 === 'number') {
+                    mcEl.innerText = `${v.mc_expectancy_p25.toFixed(3)}R`;
+                }
+                const concEl = document.getElementById('verdict-concentration');
+                if (concEl && typeof v.max_share_activo_pct === 'number') {
+                    concEl.innerText = `${v.max_share_activo_pct.toFixed(0)}%`;
+                }
+            } catch (err) {
+                console.error('Error cargando resumen de portafolio:', err);
             }
         }
 
@@ -790,6 +1036,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             initChart();
             loadSymbolData('SOLUSDT');
+            loadPortfolioSummary();
         });
     </script>
 </body>
