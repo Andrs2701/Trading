@@ -66,7 +66,8 @@ def collect_trades(overrides: dict, assets: list, upto=None) -> list:
 
 
 def equity_dd(r: np.ndarray) -> float:
-    eq = EQUITY0 * (1.0 + 0.01 * np.cumsum(r))
+    """Equity COMPUESTO (cumprod), no aditivo -- ver docs/HYDRA-resultados-veredicto.md."""
+    eq = EQUITY0 * np.cumprod(1.0 + np.clip(0.01 * r, -0.99, None))
     peak = np.maximum.accumulate(eq)
     return float(((eq - peak) / peak).min())
 

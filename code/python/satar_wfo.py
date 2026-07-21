@@ -125,8 +125,12 @@ def objective(trades: list) -> tuple[float, dict]:
     trades = sorted(trades, key=lambda t: t.t_entry)
     r = np.array([t.r for t in trades], dtype=float)
     E_R = float(r.mean())
-    # equity en R tratando 1R = 1% de una cuenta compartida (escala-libre, aditivo)
-    eq = EQUITY0 * (1.0 + 0.01 * np.cumsum(r))
+    # Equity COMPUESTO (cumprod), no aditivo -- la version aditiva (cumsum)
+    # puede producir equity negativo y drawdowns >100% (bug encontrado en la
+    # auditoria de HYDRA, ver docs/HYDRA-resultados-veredicto.md). No se
+    # manifesto visiblemente aqui (SATAR-1 tiene mejor expectancy que HYDRA)
+    # pero la formula correcta es esta independientemente del resultado.
+    eq = EQUITY0 * np.cumprod(1.0 + np.clip(0.01 * r, -0.99, None))
     peak = np.maximum.accumulate(eq)
     dd = float(((eq - peak) / peak).min())
     wr = float((r > 0).mean())

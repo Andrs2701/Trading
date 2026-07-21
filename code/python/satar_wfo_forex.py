@@ -110,7 +110,8 @@ def objective(trades: list) -> tuple[float, dict]:
     trades = sorted(trades, key=lambda t: t.t_entry)
     r = np.array([t.r for t in trades], dtype=float)
     E_R = float(r.mean())
-    eq = EQUITY0 * (1.0 + 0.01 * np.cumsum(r))
+    # Equity COMPUESTO (cumprod), no aditivo -- ver docs/HYDRA-resultados-veredicto.md
+    eq = EQUITY0 * np.cumprod(1.0 + np.clip(0.01 * r, -0.99, None))
     peak = np.maximum.accumulate(eq)
     dd = float(((eq - peak) / peak).min())
     wr = float((r > 0).mean())
