@@ -36,6 +36,8 @@ from satar_backtest import _sec, resample, ema, atr
 STATE_FILE = "breakout_live_state.json"
 WINDOW_DAYS = 150          # historia para indicadores D1 (Hurst 100d) + calentamiento
 POLL_SECONDS = 60          # ciclo de sondeo (señal cambia al cierre de vela H1)
+DEMO_TRACKER_FILE = "demo_phase_tracker.json"          # FASE-9: registro demo 90 días
+MAINNET_APPROVAL_FILE = "APROBADO_PARA_MAINNET.txt"    # candado a mainnet (ver assert_mainnet_allowed)
 
 # Configuración congelada del WFO (Fase B4) — NO modificar sin re-validar
 FROZEN_CONFIG = {
@@ -44,8 +46,50 @@ FROZEN_CONFIG = {
     "stop_atr_mult": 1.8,
 }
 
-# Activos aprobados (edge demostrado en WFO)
+# Activos en validación — el WFO de BREAKOUT-ATR dio NO RENTABLE OOS
+# (mean_oos=-0.3447 <= 0, ver docs/BREAKOUT-resultados-veredicto.md). NINGÚN
+# activo tiene un edge demostrado todavía. La demo de 90 días en testnet está
+# en curso para confirmar o descartar el edge antes de considerar mainnet.
 APPROVED_SYMBOLS = ["SOLUSDT", "ETHUSDT"]
+
+
+# ─────────────────────────── Candado a mainnet ────────────────────────────────
+def mainnet_trading_allowed() -> bool:
+    """¿Hay aprobación EXPLÍCITA para operar en mainnet (dinero real)?
+
+    Se aprueba con un archivo APROBADO_PARA_MAINNET.txt en el repo (junto a
+    este script o en el cwd) o con la variable de entorno
+    MAINNET_APPROVED=true. Ninguna de las dos existe hoy, así que por
+    defecto esta función devuelve False y mainnet queda bloqueado.
+    """
+    candidates = [
+        MAINNET_APPROVAL_FILE,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), MAINNET_APPROVAL_FILE),
+    ]
+    if any(os.path.exists(c) for c in candidates):
+        return True
+    return os.environ.get("MAINNET_APPROVED", "").strip().lower() == "true"
+
+
+def assert_mainnet_allowed(live: bool, testnet: bool):
+    """Capa de seguridad ADICIONAL a la exigencia de BYBIT_API_KEY/SECRET:
+    esa protección depende de si el usuario puso las keys; esta no depende
+    de eso — bloquea igual aunque las keys ya estén configuradas.
+
+    Aborta (RuntimeError) si se intenta enviar órdenes reales en mainnet
+    (--live sin --testnet) sin aprobación explícita. Se llama desde main(),
+    cycle() y place_order() para cubrir tanto el uso por CLI como el hilo de
+    fondo de dashboard_server.py (que llama cycle()/place_order() sin pasar
+    por main()).
+    """
+    if live and not testnet and not mainnet_trading_allowed():
+        raise RuntimeError(
+            "Bloqueado: el WFO de BREAKOUT-ATR dio NO RENTABLE OOS "
+            "(mean_oos=-0.3447). No se opera en mainnet sin aprobación "
+            "explícita tras completar la demo de 90 días. Cree el archivo "
+            f"'{MAINNET_APPROVAL_FILE}' en el repo o defina la variable de "
+            "entorno MAINNET_APPROVED=true para autorizarlo."
+        )
 
 
 # ─────────────────────────── API Bybit v5 ────────────────────────────────────
@@ -55,6 +99,35 @@ def base_url(testnet: bool) -> str:
 
 def http_get(url: str) -> dict:
     req = urllib.request.Request(url, headers={"User-Agent": "BREAKOUT-ATR/1.0"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return json.loads(r.read().decode())
+
+
+def signed_get(path: str, params: dict, testnet: bool) -> dict:
+    """GET autenticado a un endpoint PRIVADO de Bybit v5 (misma firma HMAC que
+    signed_post, pero sobre el query string en vez del body JSON). Necesario
+    porque /v5/position/list y /v5/position/closed-pnl requieren autenticación
+    — un GET sin firmar a esas rutas falla con error de auth."""
+    key = os.environ.get("BYBIT_API_KEY", "")
+    sec = os.environ.get("BYBIT_API_SECRET", "")
+    if not key or not sec:
+        raise RuntimeError("Faltan BYBIT_API_KEY / BYBIT_API_SECRET en el entorno")
+    ts = str(int(time.time() * 1000))
+    recv = "5000"
+    qs = urllib.parse.urlencode(params)
+    sign = hmac.new(
+        sec.encode(), (ts + key + recv + qs).encode(), hashlib.sha256
+    ).hexdigest()
+    req = urllib.request.Request(
+        f"{base_url(testnet)}{path}?{qs}",
+        headers={
+            "X-BAPI-API-KEY": key,
+            "X-BAPI-TIMESTAMP": ts,
+            "X-BAPI-RECV-WINDOW": recv,
+            "X-BAPI-SIGN": sign,
+            "User-Agent": "BREAKOUT-ATR/1.0",
+        },
+    )
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read().decode())
 
@@ -161,6 +234,8 @@ def save_state(st: dict):
 # ─────────────────────────── Órdenes ─────────────────────────────────────────
 def place_order(symbol: str, side: str, qty: float, sl: float, tp: float,
                 live: bool, testnet: bool) -> dict:
+    # Candado a mainnet: capa adicional independiente de si hay API keys.
+    assert_mainnet_allowed(live, testnet)
     # Redondear qty y precios según el activo
     qty_str = f"{qty:.4f}" if "SOL" in symbol else f"{qty:.6f}"
     body = {
@@ -204,28 +279,164 @@ def amend_stop(symbol: str, new_sl: float, live: bool, testnet: bool) -> dict:
 
 
 def check_position_closed(symbol: str, live: bool, testnet: bool) -> bool:
-    """Consulta si la posición sigue abierta en el exchange."""
+    """Consulta si la posición sigue abierta en el exchange.
+
+    /v5/position/list es un endpoint PRIVADO — requiere GET firmado (antes
+    usaba http_get sin firmar, que Bybit rechaza por auth; ese error caía en
+    el `except` y a su vez el código pre-existente devolvía True bajo error,
+    o sea "cerrada", en la rama de éxito con retCode!=0 también caía en
+    `return True` por defecto). Ambos casos son peligrosos: un fallo de red/
+    auth reportaría "cerrada" y el bot borraría el estado local, arriesgando
+    abrir una posición DUPLICADA mientras la original sigue viva. Por eso
+    aquí el fallo es fail-safe: ante cualquier error se asume que la
+    posición SIGUE abierta (False) y no se toca el estado local.
+    """
     if not live:
         return False  # En dry-run no podemos consultar
     try:
-        q = urllib.parse.urlencode({
-            "category": "linear", "symbol": symbol, "settleCoin": "USDT"
-        })
-        res = http_get(f"{base_url(testnet)}/v5/position/list?{q}")
+        res = signed_get(
+            "/v5/position/list",
+            {"category": "linear", "symbol": symbol, "settleCoin": "USDT"},
+            testnet,
+        )
         if res.get("retCode") == 0:
             positions = res["result"].get("list", [])
             for pos in positions:
                 if pos["symbol"] == symbol and float(pos.get("size", 0)) > 0:
                     return False  # Posición aún abierta
-        return True  # Cerrada o no existe
+            return True  # Lista vacía / size=0 -> cerrada
+        print(f"  [aviso] position/list retCode={res.get('retCode')} {res.get('retMsg')}")
+        return False  # Fail-safe: error de API -> asumir que sigue abierta
     except Exception as e:
         print(f"  [aviso] No se pudo consultar posición: {e}")
-        return False
+        return False  # Fail-safe: no se pudo confirmar -> asumir que sigue abierta
+
+
+def fetch_closed_pnl(symbol: str, testnet: bool) -> dict | None:
+    """Consulta en Bybit el último registro de PnL realizado (closed-pnl) para
+    el símbolo. Se usa para registrar en demo_phase_tracker.json el resultado
+    REAL (pnl en USD) de una operación que el exchange cerró por SL/TP
+    server-side, sin que el bot enviara él mismo la orden de cierre."""
+    try:
+        res = signed_get(
+            "/v5/position/closed-pnl",
+            {"category": "linear", "symbol": symbol, "limit": 1},
+            testnet,
+        )
+        if res.get("retCode") == 0:
+            lst = res["result"].get("list", [])
+            if lst:
+                return lst[0]
+        else:
+            print(f"  [aviso] closed-pnl retCode={res.get('retCode')} {res.get('retMsg')}")
+    except Exception as e:
+        print(f"  [aviso] No se pudo consultar closed-pnl: {e}")
+    return None
+
+
+# ─────────────────────────── Demo Fase-9 (90 días) ────────────────────────────
+def load_demo_tracker() -> dict | None:
+    if os.path.exists(DEMO_TRACKER_FILE):
+        try:
+            with open(DEMO_TRACKER_FILE) as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"  [aviso] No se pudo leer {DEMO_TRACKER_FILE}: {e}")
+    return None
+
+
+def save_demo_tracker(tr: dict):
+    with open(DEMO_TRACKER_FILE, "w") as f:
+        json.dump(tr, f, indent=2)
+
+
+def register_demo_trade(symbol: str, pos_info: dict, testnet: bool):
+    """Registra en demo_phase_tracker.json (FASE-9, demo de 90 días) el
+    resultado de una operación que el exchange acaba de cerrar.
+
+    Solo se llama desde la rama `live=True` de cycle(): en dry-run puro no
+    hay ninguna orden real en Bybit (ni siquiera en testnet) que pueda
+    cerrarse, así que no hay nada que contar. Con BYBIT_TESTNET=true SÍ
+    cuenta: ahí el bot manda órdenes reales al testnet de Bybit (ejecución
+    real, dinero ficticio), que es exactamente lo que la demo de 90 días
+    de FASE-9 debe auditar.
+
+    Fuente del PnL: endpoint /v5/position/closed-pnl de Bybit (dato real de
+    la operación). Si esa consulta falla (red, límites de API, timing),
+    se usa como respaldo una estimación con el SL vigente guardado en el
+    estado local (el trailing stop ya mantiene ese valor sincronizado con
+    el SL real en el exchange) para no perder el conteo de la operación,
+    aunque el monto quede aproximado — se marca igual en el log cuál fuente
+    se usó.
+
+    profit_factor requiere las sumas de ganancias y pérdidas por separado,
+    que el esquema original del tracker no guarda (solo total_pnl neto). Se
+    añaden dos campos auxiliares (_gross_win_usd/_gross_loss_usd) para poder
+    recalcularlo de forma incremental entre reinicios, sin tocar ni
+    renombrar ninguno de los campos que ya existían en el archivo.
+    """
+    tr = load_demo_tracker()
+    if tr is None:
+        print(f"  [aviso] {DEMO_TRACKER_FILE} no existe — no se registra el trade demo")
+        return
+
+    entry = float(pos_info.get("entry", 0.0) or 0.0)
+    sl = float(pos_info.get("sl", 0.0) or 0.0)
+    qty = float(pos_info.get("qty", 0.0) or 0.0)
+    d = pos_info.get("dir", 1)
+
+    closed = fetch_closed_pnl(symbol, testnet)
+    if closed is not None:
+        pnl = float(closed.get("closedPnl", 0.0) or 0.0)
+        source = "bybit_closed_pnl"
+    else:
+        pnl = (sl - entry) * qty * d  # estimación: SL vigente como precio de salida
+        source = "estimado_sl_local"
+        print("  [aviso] Sin dato closed-pnl de Bybit — estimando resultado con el SL local")
+
+    # R = pnl / dólares realmente en riesgo en ESTA operación (distancia al SL
+    # inicial * qty ejecutada) — no el % nominal, para reflejar el riesgo real
+    # tras redondeos de qty / tope de apalancamiento.
+    risk_usd_trade = abs(entry - sl) * qty
+    if risk_usd_trade <= 1e-9:
+        risk_usd_trade = tr.get("risk_usd") or 1.0  # evita división por cero
+    r_multiple = pnl / risk_usd_trade
+
+    tr["total_trades"] = tr.get("total_trades", 0) + 1
+    tr.setdefault("_gross_win_usd", 0.0)
+    tr.setdefault("_gross_loss_usd", 0.0)
+    if pnl > 0:
+        tr["winning_trades"] = tr.get("winning_trades", 0) + 1
+        tr["_gross_win_usd"] = round(tr["_gross_win_usd"] + pnl, 4)
+    else:
+        tr["losing_trades"] = tr.get("losing_trades", 0) + 1
+        tr["_gross_loss_usd"] = round(tr["_gross_loss_usd"] + abs(pnl), 4)
+
+    tr["total_pnl"] = round(tr.get("total_pnl", 0.0) + pnl, 4)
+    tr["total_r"] = round(tr.get("total_r", 0.0) + r_multiple, 4)
+    tr["current_equity"] = round(tr.get("current_equity", tr.get("initial_equity", 0.0)) + pnl, 4)
+    tr["peak_equity"] = round(max(tr.get("peak_equity", tr["current_equity"]), tr["current_equity"]), 4)
+    if tr["peak_equity"] > 0:
+        dd = (tr["current_equity"] - tr["peak_equity"]) / tr["peak_equity"]
+        tr["max_drawdown"] = round(min(tr.get("max_drawdown", 0.0), dd), 4)
+    tr["profit_factor"] = (
+        round(tr["_gross_win_usd"] / tr["_gross_loss_usd"], 4)
+        if tr["_gross_loss_usd"] > 1e-9 else (999.0 if tr["_gross_win_usd"] > 0 else 0.0)
+    )
+
+    save_demo_tracker(tr)
+    print(f"  [demo] Trade #{tr['total_trades']} registrado ({source}): "
+          f"pnl={pnl:+.2f} USD ({r_multiple:+.2f}R) | equity={tr['current_equity']:.2f} | "
+          f"PF={tr['profit_factor']:.2f}")
 
 
 # ─────────────────────────── Ciclo principal ─────────────────────────────────
 def cycle(symbol: str, p: BreakoutParams, live: bool, testnet: bool, equity: float):
     """Un ciclo del ejecutor: descarga datos, corre el motor, detecta señal."""
+    # Candado a mainnet: se revisa en CADA ciclo (no solo en main()) porque
+    # dashboard_server.py llama cycle() directo desde su hilo de fondo, sin
+    # pasar por main() ni por sus validaciones de arranque.
+    assert_mainnet_allowed(live, testnet)
     now = datetime.now(timezone.utc)
     print(f"\n{'='*60}")
     print(f"[{now:%Y-%m-%d %H:%M:%S UTC}] Ciclo {symbol}")
@@ -248,10 +459,15 @@ def cycle(symbol: str, p: BreakoutParams, live: bool, testnet: bool, equity: flo
     # 3) Cargar estado local
     st = load_state(symbol)
 
-    # 4) Reconciliación: si tenemos posición local, verificar si el exchange la cerró
+    # 4) Reconciliación: si tenemos posición local, verificar si el exchange la
+    #    cerró (SL/TP server-side, sin que el bot enviara la orden de cierre).
+    #    El bot nunca "cierra" una operación él mismo -- Bybit lo hace vía
+    #    SL/TP adjuntos a la orden -- así que la única forma de detectar el
+    #    cierre y su resultado es consultando el exchange aquí.
     if st["position"] is not None and live:
         if check_position_closed(symbol, live, testnet):
-            print(f"  [reconciliación] Posición cerrada en exchange — limpiando estado local")
+            print(f"  [reconciliación] Posición cerrada en exchange — registrando resultado")
+            register_demo_trade(symbol, st["position"], testnet)
             st["position"] = None
             save_state(st)
 
@@ -282,6 +498,7 @@ def cycle(symbol: str, p: BreakoutParams, live: bool, testnet: bool, equity: flo
                 "entry": pos.entry,
                 "entry_ts": last_ts,
                 "side": side,
+                "qty": pos.qty,  # necesario para estimar PnL/R al cerrar (ver register_demo_trade)
             }
             st["last_signal_ts"] = last_ts
             save_state(st)
@@ -346,8 +563,10 @@ def main():
 
     # Validaciones de seguridad
     if a.symbol not in APPROVED_SYMBOLS:
-        print(f"⚠️  {a.symbol} no está en los activos aprobados ({APPROVED_SYMBOLS}).")
-        print(f"   El edge solo se demostró en esos activos. Proceder bajo su riesgo.")
+        print(f"⚠️  {a.symbol} no está en los activos configurados ({APPROVED_SYMBOLS}).")
+        print(f"   El WFO de BREAKOUT-ATR dio NO RENTABLE OOS: ningún activo tiene un")
+        print(f"   edge demostrado todavía (ver docs/BREAKOUT-resultados-veredicto.md).")
+        print(f"   Proceder bajo su riesgo.")
         resp = input("¿Continuar? [s/N]: ").strip().lower()
         if resp != "s":
             sys.exit(0)
@@ -357,6 +576,17 @@ def main():
         print("⚠️  ADVERTENCIA: --live en MAINNET (dinero real).")
         print("   El protocolo FASE-9 exige 90 días de demo antes.")
         print("=" * 60)
+
+    # Candado a mainnet: capa adicional independiente de si hay API keys
+    # configuradas -- bloquea salvo aprobación explícita (ver
+    # assert_mainnet_allowed). cycle()/place_order() ya lo revalidan en cada
+    # ciclo; aquí se hace también para fallar rápido y con salida limpia
+    # desde la CLI, sin esperar al primer ciclo.
+    try:
+        assert_mainnet_allowed(a.live, a.testnet)
+    except RuntimeError as e:
+        print(f"❌ {e}")
+        sys.exit(1)
 
     if a.live and not os.environ.get("BYBIT_API_KEY"):
         print("❌ --live requiere BYBIT_API_KEY y BYBIT_API_SECRET en variables de entorno.")
