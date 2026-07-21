@@ -312,8 +312,6 @@ def cycle(symbol: str, p: BreakoutParams, live: bool, testnet: bool, equity: flo
         else:
             print(f"  [gestión] Posición {st['position']['side']} activa | "
                   f"SL={old_sl:.2f} | EMA50={e50:.2f}")
-else:
-        print(f"  Sin señal — esperando ruptura de rango con confirmación.")
 
 
 def make_params() -> BreakoutParams:
