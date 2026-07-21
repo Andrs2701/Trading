@@ -37,7 +37,6 @@
             padding: 20px;
         }
 
-        /* Glassmorphism utility */
         .glass-card {
             background: var(--card-bg);
             backdrop-filter: blur(16px);
@@ -48,7 +47,6 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
 
-        /* Header */
         header {
             display: flex;
             justify-content: space-between;
@@ -91,7 +89,6 @@
             color: var(--text-muted);
         }
 
-        /* Symbol Navigation Tabs */
         .symbol-tabs {
             display: flex;
             gap: 8px;
@@ -123,7 +120,6 @@
             box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
         }
 
-        /* Metrics Grid */
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -153,7 +149,6 @@
         .metric-value.red { color: var(--accent-red); }
         .metric-value.blue { color: var(--primary); }
 
-        /* Dashboard Main Layout */
         .dashboard-layout {
             display: grid;
             grid-template-columns: 3fr 1fr;
@@ -167,7 +162,6 @@
             }
         }
 
-        /* Chart Area */
         .chart-header {
             display: flex;
             justify-content: space-between;
@@ -188,7 +182,6 @@
             overflow: hidden;
         }
 
-        /* Regime Analysis Panel */
         .analysis-panel {
             display: flex;
             flex-direction: column;
@@ -300,7 +293,7 @@
 
         .table-container {
             overflow-x: auto;
-            max-height: 450px;
+            max-height: 480px;
             overflow-y: auto;
         }
 
@@ -454,7 +447,7 @@
     <div class="glass-card">
         <div class="table-header">
             <div>
-                <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px;">Histórico de Operaciones</h3>
+                <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px;">Histórico de Operaciones Auditadas</h3>
                 <span style="font-size: 12px; color: var(--text-muted);">Filtra por Año, Mes, Dirección o Resultado</span>
             </div>
         </div>
@@ -517,7 +510,7 @@
             </div>
 
             <div class="filter-stats-pill" id="filter-stats">
-                Mostrando: 0 trades | PnL: $0.00
+                Cargando operaciones...
             </div>
         </div>
 
@@ -640,6 +633,31 @@
             const pnlStr = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(2);
             document.getElementById('filter-stats').innerText = `Mostrando: ${filtered.length} de ${allTrades.length} trades | PnL: ${pnlStr} | Win Rate: ${winRate}%`;
 
+            // Update Chart Markers for filtered trades
+            if (candleSeries && filtered.length > 0) {
+                const markers = [];
+                filtered.forEach(t => {
+                    if (t.entry_time) {
+                        // Formato fecha a Timestamp Unix UTC
+                        const parts = t.entry_time.split(' ');
+                        const d = parts[0];
+                        const timeStr = parts[1] || '00:00';
+                        const ts = Math.floor(new Date(`${d}T${timeStr}:00Z`).getTime() / 1000);
+                        if (!isNaN(ts)) {
+                            markers.push({
+                                time: ts,
+                                position: t.direction === 'LONG' ? 'belowBar' : 'aboveBar',
+                                color: t.direction === 'LONG' ? '#10b981' : '#ef4444',
+                                shape: t.direction === 'LONG' ? 'arrowUp' : 'arrowDown',
+                                text: `${t.direction} @ $${t.entry_price}`
+                            });
+                        }
+                    }
+                });
+                markers.sort((a, b) => a.time - b.time);
+                try { candleSeries.setMarkers(markers); } catch (e) { console.log('marker err:', e); }
+            }
+
             // Populate table rows
             const tbody = document.getElementById('trades-body');
             tbody.innerHTML = '';
@@ -675,7 +693,7 @@
             document.getElementById('chart-symbol-badge').innerText = symbol;
 
             try {
-                const res = await fetch(`/api/data?symbol=${symbol}`);
+                const res = await fetch(`/api/data?symbol=${symbol}&t=${Date.now()}`);
                 const data = await res.json();
 
                 if (data.error) {
