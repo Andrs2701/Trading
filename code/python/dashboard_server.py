@@ -196,11 +196,12 @@ def get_engine_data(symbol: str):
     live_st = load_state(symbol)
     demo_info = {
         "active": True,
-        "phase": "FASE 9 (DEMO 90 DÍAS)",
+        "phase": "FASE 9 (DEMO 90 DÍAS - MODERADA)",
         "equity": 200.0,
-        "risk_usd": 2.00,
+        "risk_usd": 4.00,
+        "risk_pct": 0.02,
         "target_pf": 1.50,
-        "target_dd": -0.10
+        "target_dd": -0.20
     }
 
     return {

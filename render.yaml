@@ -21,5 +21,7 @@ services:
         value: "SOLUSDT"
       - key: TRADING_EQUITY
         value: "200.0"
+      - key: TRADING_RISK_PCT
+        value: "0.02"
       - key: ENABLE_BACKGROUND_BOT
         value: "true"

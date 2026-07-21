@@ -312,17 +312,19 @@ def cycle(symbol: str, p: BreakoutParams, live: bool, testnet: bool, equity: flo
         else:
             print(f"  [gestión] Posición {st['position']['side']} activa | "
                   f"SL={old_sl:.2f} | EMA50={e50:.2f}")
-    else:
+else:
         print(f"  Sin señal — esperando ruptura de rango con confirmación.")
 
 
 def make_params() -> BreakoutParams:
     """Crea parámetros con la configuración congelada del WFO."""
-    p = BreakoutParams()
-    p.vol_spike_mult = FROZEN_CONFIG["vol_spike_mult"]
-    p.range_expansion_mult = FROZEN_CONFIG["range_expansion_mult"]
-    p.stop_atr_mult = FROZEN_CONFIG["stop_atr_mult"]
-    return p
+    risk = float(os.environ.get("TRADING_RISK_PCT", "0.02"))
+    return BreakoutParams(
+        vol_spike_mult=FROZEN_CONFIG["vol_spike_mult"],
+        range_expansion_mult=FROZEN_CONFIG["range_expansion_mult"],
+        stop_atr_mult=FROZEN_CONFIG["stop_atr_mult"],
+        risk_pct=risk
+    )
 
 
 def main():
