@@ -133,24 +133,32 @@ def get_engine_data(symbol: str):
 
     # Trades formateados
     trades_data = []
-    for idx, t in enumerate(raw_trades):
-        trades_data.append({
-            "id": idx + 1,
-            "symbol": t.symbol,
-            "direction": "LONG" if t.direction > 0 else "SHORT",
-            "entry_time": pd.to_datetime(t.t_entry, unit="s", utc=True).strftime("%Y-%m-%d %H:%M"),
-            "exit_time": pd.to_datetime(t.t_exit, unit="s", utc=True).strftime("%Y-%m-%d %H:%M") if t.t_exit else "-",
-            "entry_price": safe_float(t.entry),
-            "exit_price": safe_float(t.exit),
-            "sl_init": safe_float(t.sl_init),
-            "tp": safe_float(t.tp),
-            "qty": safe_float(t.qty),
-            "pnl": safe_float(t.pnl),
-            "r_multiple": safe_float(t.r),
-            "reason": str(t.reason or "open")
-        })
+    if raw_trades:
+        for idx, t in enumerate(raw_trades):
+            trades_data.append({
+                "id": idx + 1,
+                "symbol": t.symbol,
+                "direction": "LONG" if t.direction > 0 else "SHORT",
+                "entry_time": pd.to_datetime(t.t_entry, unit="s", utc=True).strftime("%Y-%m-%d %H:%M"),
+                "exit_time": pd.to_datetime(t.t_exit, unit="s", utc=True).strftime("%Y-%m-%d %H:%M") if t.t_exit else "-",
+                "entry_price": safe_float(t.entry),
+                "exit_price": safe_float(t.exit),
+                "sl_init": safe_float(t.sl_init),
+                "tp": safe_float(t.tp),
+                "qty": safe_float(t.qty),
+                "pnl": safe_float(t.pnl),
+                "r_multiple": safe_float(t.r),
+                "reason": str(t.reason or "open")
+            })
+    elif os.path.exists("historical_trades_summary.json"):
+        try:
+            with open("historical_trades_summary.json") as f:
+                hist_map = json.load(f)
+                trades_data = hist_map.get(symbol, [])
+        except Exception as e:
+            print(f"[hist json read] {e}")
 
-    # Si hay archivo audit de demo, añadir trades de la auditoría en vivo
+    # Si hay archivo audit de demo, añadir trades de la auditoría en vivo al final
     if os.path.exists("demo_trades_audit.csv"):
         try:
             audit_df = pd.read_csv("demo_trades_audit.csv")
