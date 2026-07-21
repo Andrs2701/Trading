@@ -2,10 +2,19 @@
 """
 Exporta la lista de trades históricos auditados para SOLUSDT, ETHUSDT y BTCUSDT
 a un archivo JSON liviano (historical_trades_summary.json) para la UI del Dashboard.
+
+Usa BreakoutEngine (motor plano) + la config CONGELADA del WFO
+(breakout_live.FROZEN_CONFIG) -- exactamente lo mismo que corre
+breakout_live.py en producción. Antes usaba AdvancedBreakoutEngine
+(test_bb_squeeze.py, con un filtro extra de compresión de Bollinger que
+nunca pasó por WFO/Monte Carlo) -- eso hacía que el "histórico" mostrado en
+el dashboard no coincidiera con lo que el bot en vivo realmente opera (para
+ETHUSDT llegaba a decir PF 0.715 cuando con el motor real es PF 1.016).
 """
 import json, os
 import pandas as pd
-from test_bb_squeeze import AdvancedBreakoutEngine, AdvancedBreakoutParams
+from breakout_backtest import BreakoutEngine, BreakoutParams
+from breakout_live import FROZEN_CONFIG
 
 symbols = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT']
 out = {}
@@ -16,13 +25,10 @@ for sym in symbols:
         continue
     df = pd.read_csv(csv_file, parse_dates=['timestamp'], index_col='timestamp')
     if df.index.tz is None: df.index = df.index.tz_localize('UTC')
-    
-    p = AdvancedBreakoutParams()
-    p.use_bb_d1 = True
-    p.bb_d1_expansion = True
-    p.bb_d1_min_percentile = 0.20
-    
-    eng = AdvancedBreakoutEngine(df, p, symbol=sym)
+
+    p = BreakoutParams(**FROZEN_CONFIG)
+
+    eng = BreakoutEngine(df, p, symbol=sym)
     res = eng.run()
     
     t_list = []
