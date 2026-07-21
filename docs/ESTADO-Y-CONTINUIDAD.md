@@ -1,7 +1,12 @@
 # Trading — Estado del Proyecto y Guía de Continuidad
 
-**Última actualización:** 2026-07-10 · **Repo:** https://github.com/Andrs2701/Trading (rama `main`)
+**Última actualización:** 2026-07-21 · **Repo:** https://github.com/Andrs2701/Trading (rama `main`)
 **Propósito de este documento:** punto de entrada único para retomar el proyecto — resume las hipótesis probadas, el veredicto de cada una, y qué sigue.
+
+> **Nota 2026-07-21:** el proyecto pasó de "en desarrollo" a "desplegado en
+> vivo" (`trading-bot-satar.onrender.com`, BREAKOUT-ATR/SOLUSDT, Bybit
+> Testnet). Una auditoría del bot en producción encontró y corrigió varios
+> problemas de honestidad/seguridad — ver `§9` para el detalle completo.
 
 ---
 
@@ -67,7 +72,8 @@ Para poner el proyecto en marcha en **modo demo (simulación en Bybit Testnet)**
 
 1.  **Refinar la Hipótesis 4 (Bollinger Squeeze Filter):** Modificar `breakout_backtest.py` para añadir un filtro de régimen de corto plazo basado en la compresión de las bandas de Bollinger diarias. Solo se operan breakouts si las bandas están expandiéndose (evitando consolidaciones maduras y falsas rupturas). Es la opción más rápida para modo demo.
 2.  **Probar una quinta hipótesis (Pairs Trading / Arbitraje Estadístico):** Operar el spread de cointegración entre activos altamente correlacionados (ej. SOL vs ETH o BTC). Al ser mean-reverting, el edge es estructuralmente más estable ante comisiones.
-3.  **Iniciar modo demo seco de BREAKOUT-ATR:** Correr la configuración congelada de la Hipótesis 4 limitando la operativa únicamente a activos de alta beta/volatilidad (SOLUSDT, ETHUSDT) donde el edge es rentable.
+3.  ~~**Iniciar modo demo seco de BREAKOUT-ATR**~~ — **ya en curso** (ver §9): desplegado en Render desde el 2026-07-20, demo Fase-9 de 90 días activa en Bybit Testnet sobre SOLUSDT.
+4.  **Hipótesis 5 (Forex/Materias Primas)** — en progreso, ver §10: mismo motor SATAR-1 sin recalibrar sobre EURUSD/GBPUSD/USDJPY/XAUUSD, para probar si la regla original tiene edge fuera de cripto.
 
 ## 7. Cómo retomar (comandos)
 
@@ -93,3 +99,26 @@ python breakout_montecarlo.py --config-from-wfo --iters 5000
 - **Mapeo causal:** Para cualquier indicador H1/D1, shift(1) antes de operar en M5 para evitar fugas de información.
 - **Filtro de volumen:** El volumen relativo es un confirmador de momentum y de sweeps; sin volumen, la tasa de fakeouts en cripto se duplica.
 - El motor base (`satar_backtest.py`: indicadores, fricciones, position sizing, trailing EMA) está auditado y es reutilizable — nuevas hipótesis deben importar de ahí, no reimplementar desde cero.
+
+## 9. Auditoría del bot en vivo (2026-07-21)
+
+El bot BREAKOUT-ATR/SOLUSDT lleva desplegado en Render (`trading-bot-satar.onrender.com`) desde el 2026-07-20. Una auditoría completa (código + dashboard en producción + Bybit) encontró varios problemas, todos corregidos en esta sesión salvo donde se indica:
+
+1. **Dashboard engañoso (corregido).** Mostraba solo las métricas de SOLUSDT (el único activo rentable) como si representaran a todo el sistema, sin mencionar en ningún lado que el WFO dio **NO RENTABLE OOS** (`mean_oos=-0.3447`) ni que el Monte Carlo mostró **468% de concentración** del resultado en un solo activo. ETHUSDT (-53.8% DD histórico, -$4,066.72) y BTCUSDT (plano) solo eran visibles al hacer click en sus pestañas. Ahora hay un banner de veredicto siempre visible y un resumen de los 3 activos en una sola vista.
+2. **Riesgo subido manualmente sin respaldo (corregido).** El 2026-07-20 a las 19:20 se subió `TRADING_RISK_PCT` de 1% a 2% ($2→$4/trade) y se aflojó `target_dd` de -10% a -20% ("para mayor velocidad") — justo lo opuesto de lo que sugiere el propio veredicto NO APROBADO. Revertido a 1%.
+3. **Sin candado a mainnet (corregido).** No existía ninguna protección que impidiera pasar de testnet a dinero real sin revisión. Se añadió `assert_mainnet_allowed()` en `breakout_live.py`, que bloquea órdenes en mainnet salvo aprobación explícita (archivo `APROBADO_PARA_MAINNET.txt` o `MAINNET_APPROVED=true`).
+4. **Demo Fase-9 nunca se actualizaba (corregido).** `demo_phase_tracker.json` llevaba en 0 trades desde el despliegue porque nada en el código escribía en él. Ahora `register_demo_trade()` registra cada cierre real (PnL vía `/v5/position/closed-pnl` de Bybit).
+5. **Bug de seguridad preexistente en `check_position_closed()` (corregido).** Consultaba un endpoint privado de Bybit sin firmar; el error de autenticación resultante se interpretaba como "posición cerrada", arriesgando abrir una posición duplicada mientras la original seguía abierta en el exchange.
+6. **El hilo del bot se duerme con el plan free de Render (mitigado, no resuelto de raíz).** `_start_background_bot()` corre dentro del mismo proceso web; Render duerme ese proceso tras ~15 min sin tráfico HTTP, matando el hilo que evalúa el mercado cada 60s. Confirmado en vivo: `live_state` mostraba `last_signal_ts=null` y `position=null`. Se añadió un ping cada 10 min vía GitHub Actions (`.github/workflows/keepalive.yml`) como mitigación gratuita inmediata; la solución robusta es pasar a un plan de Render que no duerma, o a un servicio de tipo *Background Worker*.
+7. **Deploy directo a `main` sin CI/staging.** Se confirmó que un error de sintaxis introducido junto con el cambio de riesgo (punto 2) estuvo en producción ~90 minutos el 2026-07-20 antes de corregirse. No se cambió el flujo de deploy en esta sesión — queda como riesgo de proceso a decidir.
+
+**Reconciliación de historial:** mientras se hacía esta auditoría, `origin/main` recibió una serie de hotfixes operativos directos (errores 500, carga de klines, filtros del dashboard) en paralelo. Ambos historiales se unificaron con un merge real (`--allow-unrelated-histories`, no squash ni force-push) que preserva la autoría completa de los dos lados.
+
+## 10. Hipótesis 5 — Forex/Materias Primas (en progreso)
+
+Tras el veredicto NO APROBADO/VIABLE de las 4 hipótesis en cripto, se decidió probar si la regla SATAR-1 original (sin recalibrar ningún parámetro P01-P37) tiene edge en forex — un mercado con microestructura distinta (sin comisión taker, spreads más bajos, sesiones horarias).
+
+- **Activos:** EURUSD, GBPUSD, USDJPY, XAUUSD · **Fuente:** ticks de Dukascopy (gratuito, sin API key) resampleados a M5.
+- **Adaptaciones (solo de infraestructura, no de reglas de trading):** fricciones calibradas por par (`satar_forex_config.py`), offset D1 a las 22:00 UTC (cierre NY, convención forex — requirió añadir un parámetro `offset` opcional a `resample()`/`Engine` en `satar_backtest.py`, retrocompatible).
+- **Folds:** 4 folds anclados-rodantes sobre 2010-2025, holdout desde 2025-01-01.
+- **Estado:** descarga de datos en curso (`download_forex.py`, ~16 años × 4 activos vía Dukascopy — proceso lento, horas de cómputo). WFO y Monte Carlo (`satar_wfo_forex.py`, `satar_montecarlo_forex.py`) implementados y con el fix de equity compuesto ya aplicado, pendientes de ejecutar hasta tener los datos completos.
