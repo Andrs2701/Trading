@@ -3,7 +3,7 @@
 SATAR-1 / BREAKOUT-ATR — Web Dashboard Server (Flask API + Embedded UI).
 
 Servidor Web optimizado para Render Cloud y entorno local:
-- Carga ultra-rápida de velas H1 directamente desde Bybit API v5 (1 sola petición HTTP).
+- Carga ultra-rápida de velas H1 directamente desde Bybit API v5 (con reintentos robustos).
 - Selección de criptomoneda (SOLUSDT, ETHUSDT, BTCUSDT)
 - Gráfico interactivo con velas, EMA50, Rangos y marcadores
 - Análisis de régimen en tiempo real
@@ -23,28 +23,32 @@ APPROVED_SYMBOLS = ["SOLUSDT", "ETHUSDT", "BTCUSDT"]
 app = Flask(__name__, template_folder="templates")
 
 def fetch_klines_h1_fast(symbol: str, limit: int = 300) -> pd.DataFrame:
-    """Descarga velas H1 directamente en 1 sola llamada API a Bybit (<100ms)."""
+    """Descarga velas H1 directamente desde Bybit API v5 con reintentos robustos."""
     q = urllib.parse.urlencode({
         "category": "linear", "symbol": symbol,
         "interval": "60", "limit": limit
     })
-    req = urllib.request.Request(f"{base_url(testnet=False)}/v5/market/kline?{q}",
-                                 headers={"User-Agent": "BREAKOUT-ATR/1.0"})
-    with urllib.request.urlopen(req, timeout=10) as r:
-        res = json.loads(r.read().decode())
-        
-    if res.get("retCode") != 0:
-        raise RuntimeError(f"API Error: {res.get('retMsg')}")
-        
-    kl = res["result"]["list"]
-    df = pd.DataFrame(kl, columns=["timestamp", "open", "high", "low", "close", "volume", "turnover"])
-    df["timestamp"] = pd.to_datetime(df["timestamp"].astype(float), unit="ms", utc=True)
-    df = (df.astype({c: float for c in ["open", "high", "low", "close", "volume"]})
-            .sort_values("timestamp").drop_duplicates("timestamp").set_index("timestamp")
-            [["open", "high", "low", "close", "volume"]])
-    # Filtrar solo velas H1 cerradas
-    last_closed = pd.Timestamp.now(tz="UTC").floor("1h") - pd.Timedelta(hours=1)
-    return df[df.index <= last_closed]
+    url = f"{base_url(testnet=False)}/v5/market/kline?{q}"
+    
+    for attempt in range(1, 5):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "BREAKOUT-ATR/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                res = json.loads(r.read().decode())
+            if res.get("retCode") == 0:
+                kl = res["result"]["list"]
+                df = pd.DataFrame(kl, columns=["timestamp", "open", "high", "low", "close", "volume", "turnover"])
+                df["timestamp"] = pd.to_datetime(df["timestamp"].astype(float), unit="ms", utc=True)
+                df = (df.astype({c: float for c in ["open", "high", "low", "close", "volume"]})
+                        .sort_values("timestamp").drop_duplicates("timestamp").set_index("timestamp")
+                        [["open", "high", "low", "close", "volume"]])
+                last_closed = pd.Timestamp.now(tz="UTC").floor("1h") - pd.Timedelta(hours=1)
+                return df[df.index <= last_closed]
+        except Exception as e:
+            print(f"  [klines-h1] Reintento {attempt}/4 para {symbol}: {e}")
+            time.sleep(1 * attempt)
+            
+    raise RuntimeError(f"No se pudo descargar klines H1 para {symbol} tras 4 intentos.")
 
 def get_engine_data(symbol: str):
     symbol = symbol.upper()
@@ -62,9 +66,8 @@ def get_engine_data(symbol: str):
         Hdf = eng.Hdf.iloc[-300:].copy()
         last_hurst = float(eng.G.hurst[-1]) if len(eng.G.hurst) > 0 and not np.isnan(eng.G.hurst[-1]) else 0.542
     else:
-        # 2. En Render Cloud: Carga ultra-rápida H1 directamente desde Bybit (<0.2 segundos)
+        # 2. En Render Cloud: Carga H1 directamente desde Bybit (<0.2s)
         Hdf = fetch_klines_h1_fast(symbol, limit=300)
-        # Métricas de referencia de la estrategia en el activo
         baseline_metrics = {
             "SOLUSDT": {"profit_factor": 1.491, "expectancy_R": 0.3432, "win_rate": 0.3372, "max_drawdown": -0.1010, "trades": 172},
             "ETHUSDT": {"profit_factor": 0.948, "expectancy_R": -0.0285, "win_rate": 0.2455, "max_drawdown": -0.5382, "trades": 497},
@@ -75,7 +78,7 @@ def get_engine_data(symbol: str):
         raw_trades = []
         last_hurst = 0.542
 
-    # Calcular indicadores H1 para el gráfico
+    # Indicadores H1 para el gráfico
     c = Hdf["close"].to_numpy(float)
     h = Hdf["high"].to_numpy(float)
     l = Hdf["low"].to_numpy(float)
@@ -125,12 +128,36 @@ def get_engine_data(symbol: str):
             "reason": t.reason or "open"
         })
 
+    # Si hay archivo audit de demo, añadir trades de la auditoría en vivo
+    if os.path.exists("demo_trades_audit.csv"):
+        try:
+            audit_df = pd.read_csv("demo_trades_audit.csv")
+            for idx, r in audit_df.iterrows():
+                if r.get("symbol", "").upper() == symbol:
+                    trades_data.append({
+                        "id": len(trades_data) + 1,
+                        "symbol": symbol,
+                        "direction": r.get("side", "LONG"),
+                        "entry_time": str(r.get("entry_time", "-")),
+                        "exit_time": str(r.get("exit_time", "-")),
+                        "entry_price": float(r.get("entry_price", 0)),
+                        "exit_price": float(r.get("exit_price", 0)),
+                        "sl_init": float(r.get("sl_init", 0)),
+                        "tp": float(r.get("tp", 0)),
+                        "qty": float(r.get("qty", 0)),
+                        "pnl": float(r.get("pnl", 0)),
+                        "r_multiple": float(r.get("r_multiple", 0)),
+                        "reason": str(r.get("reason", "live_demo"))
+                    })
+        except Exception as e:
+            print(f"[audit csv read] {e}")
+
     # Análisis de régimen
     last_vol = float(v[-1])
-    vol_avg = float(h1_vol_ma[-1]) if not np.isnan(h1_vol_ma[-1]) else 1.0
+    vol_avg = float(h1_vol_ma[-1]) if not math.isnan(h1_vol_ma[-1]) else 1.0
     vol_ratio = float(round(last_vol / (vol_avg + 1e-12), 2))
     last_body = float(abs(c[-1] - Hdf["open"].iloc[-1]))
-    last_atr_h1 = float(h1_atr[-1]) if not np.isnan(h1_atr[-1]) else 1.0
+    last_atr_h1 = float(h1_atr[-1]) if not math.isnan(h1_atr[-1]) else 1.0
     body_atr_ratio = float(round(last_body / (last_atr_h1 + 1e-12), 2))
 
     analysis = {
@@ -192,6 +219,18 @@ def api_data():
 @app.route("/api/symbols")
 def api_symbols():
     return jsonify({"symbols": APPROVED_SYMBOLS})
+
+@app.route("/api/run_cycle", methods=["POST"])
+def api_run_cycle():
+    payload = request.get_json(silent=True) or {}
+    symbol = payload.get("symbol", "SOLUSDT").upper()
+    try:
+        from breakout_live import cycle, make_params
+        p = make_params()
+        cycle(symbol, p, live=False, testnet=False, equity=10000.0)
+        return jsonify({"status": "success", "message": f"Ciclo ejecutado exitosamente para {symbol}"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route("/health")
 def health_check():
