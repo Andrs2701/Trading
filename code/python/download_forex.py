@@ -171,6 +171,31 @@ def download_month(symbol: str, year: int, month: int, digits: int,
     return ticks_to_m5(all_ticks)
 
 
+def load_existing_max_ts(filename: str):
+    """Ultimo timestamp ya guardado en el CSV, o None si no existe/esta vacio."""
+    if not os.path.exists(filename):
+        return None
+    try:
+        df_existing = pd.read_csv(filename, usecols=["timestamp"], parse_dates=["timestamp"])
+        if len(df_existing) == 0:
+            return None
+        return df_existing["timestamp"].max()
+    except Exception as e:
+        print(f"[aviso] No se pudo leer {filename} existente: {e}")
+        return None
+
+
+def append_month(filename: str, df_month: pd.DataFrame, write_header: bool):
+    """Escribe el mes a disco INMEDIATAMENTE (modo append). Si el proceso muere
+    a mitad de la descarga (reinicio de la maquina, corte de luz, etc.), solo se
+    pierde el mes en curso -- no todo el rango descargado hasta ese momento."""
+    df_month = df_month.sort_index()
+    df_month = df_month[~df_month.index.duplicated(keep="first")]
+    out = df_month.reset_index()
+    out.columns = ["timestamp", "open", "high", "low", "close", "volume"]
+    out.to_csv(filename, mode="a", header=write_header, index=False)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Descarga datos forex M5 desde Dukascopy")
     ap.add_argument("--symbol", required=True, choices=list(INSTRUMENT_CFG.keys()))
@@ -181,8 +206,18 @@ def main():
 
     cfg = INSTRUMENT_CFG[args.symbol]
     digits = cfg["digits"]
-    parts = []
+    filename = f"{args.symbol.lower()}_m5.csv"
     total_candles = 0
+
+    # Resume: si el CSV ya tiene datos, retomar desde el mes del ultimo timestamp
+    # guardado (ese mes se re-descarga completo por seguridad; la limpieza final
+    # elimina los duplicados que eso genere).
+    resume_year, resume_month = args.start, 1
+    existing_max = load_existing_max_ts(filename)
+    file_has_header = os.path.exists(filename)
+    if existing_max is not None:
+        resume_year, resume_month = existing_max.year, existing_max.month
+        print(f"[resume] {filename} ya tiene datos hasta {existing_max} -> retomando desde {resume_year}-{resume_month:02d}")
 
     now = datetime.now(timezone.utc)
     for year in range(args.start, args.end + 1):
@@ -192,37 +227,28 @@ def main():
                 break
             if year > now.year:
                 break
+            if (year, month) < (resume_year, resume_month):
+                continue
             t0 = time.time()
             df_month = download_month(args.symbol, year, month, digits, args.threads)
             if len(df_month) == 0:
                 print(f"  {year}-{month:02d}: sin datos")
                 continue
-            parts.append(df_month)
+            append_month(filename, df_month, write_header=not file_has_header)
+            file_has_header = True
             total_candles += len(df_month)
             elapsed = time.time() - t0
-            print(f"  {year}-{month:02d}: {len(df_month)} velas M5 ({elapsed:.1f}s) [acum: {total_candles}]")
+            print(f"  {year}-{month:02d}: {len(df_month)} velas M5 ({elapsed:.1f}s) [acum sesion: {total_candles}]", flush=True)
 
-    if not parts:
+    if not file_has_header:
         print("No se descargó nada.")
         return
 
-    df = pd.concat(parts).sort_index()
-    # Eliminar duplicados
-    df = df[~df.index.duplicated(keep="first")]
-    # Filtrar fines de semana residuales
-    df = df[~df.index.to_series().apply(lambda x: is_weekend(x.to_pydatetime()))]
-
-    # Guardar en formato compatible con satar_backtest.py
-    df = df.reset_index()
-    df.columns = ["timestamp", "open", "high", "low", "close", "volume"]
-    filename = f"{args.symbol.lower()}_m5.csv"
-
-    if os.path.exists(filename):
-        old = pd.read_csv(filename, parse_dates=["timestamp"])
-        df = pd.concat([old, df])
-        print(f"Fusionado con {len(old)} velas existentes.")
-
+    # Limpieza final: dedup (el mes de reanudacion se re-descarga completo a
+    # proposito) + filtro de fin de semana residual.
+    df = pd.read_csv(filename, parse_dates=["timestamp"])
     df = df.sort_values("timestamp").drop_duplicates("timestamp").reset_index(drop=True)
+    df = df[~df["timestamp"].apply(lambda x: is_weekend(x.to_pydatetime()))].reset_index(drop=True)
     df.to_csv(filename, index=False)
     print(f"\nOK: {len(df)} velas M5 -> {filename}")
     print(f"    Rango: {df.timestamp.min()} -> {df.timestamp.max()}")
