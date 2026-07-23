@@ -1,6 +1,6 @@
 # Trading — Estado del Proyecto y Guía de Continuidad
 
-**Última actualización:** 2026-07-21 · **Repo:** https://github.com/Andrs2701/Trading (rama `main`)
+**Última actualización:** 2026-07-23 · **Repo:** https://github.com/Andrs2701/Trading (rama `main`)
 **Propósito de este documento:** punto de entrada único para retomar el proyecto — resume las hipótesis probadas, el veredicto de cada una, y qué sigue.
 
 > **Nota 2026-07-21:** el proyecto pasó de "en desarrollo" a "desplegado en
@@ -12,7 +12,7 @@
 
 ## 0. TL;DR
 
-Se han probado **4 hipótesis de trading algorítmico en cripto perpetuos**, todas con el mismo protocolo de rigor (formalización → diagnóstico → multi-activo → Walk-Forward Optimization → Monte Carlo → veredicto, con holdout intocable y prohibición explícita de ajustar parámetros a mano mirando resultados). **Las 4 fueron rechazadas formalmente bajo WFO, pero la Hipótesis 4 demostró viabilidad estructural.**
+Se han probado **5 hipótesis de trading algorítmico** (4 en cripto perpetuos + 1 en forex/materias primas), todas con el mismo protocolo de rigor (formalización → diagnóstico → multi-activo → Walk-Forward Optimization → Monte Carlo → veredicto, con holdout intocable y prohibición explícita de ajustar parámetros a mano mirando resultados). **Las 5 fueron rechazadas formalmente bajo WFO, pero la Hipótesis 4 demostró viabilidad estructural.**
 
 | # | Hipótesis | Veredicto | Documentación |
 |---|---|---|---|
@@ -20,8 +20,9 @@ Se han probado **4 hipótesis de trading algorítmico en cripto perpetuos**, tod
 | 2 | **HYDRA**: SATAR-1 + filtro de régimen HMM/Hurst | ❌ NO APROBADO | `docs/HYDRA-resultados-veredicto.md` |
 | 3 | **SWEEP**: liquidity sweep / stop hunt sobre estructura semanal | ❌ NO APROBADO | `docs/SWEEP-formalizacion.md`, `docs/SWEEP-resultados-veredicto.md` |
 | 4 | **BREAKOUT-ATR**: momentum de ruptura de rango diario con expansión de volatilidad | ⚠️ NO APROBADO WFO / VIABLE | `docs/BREAKOUT-formalizacion.md`, `docs/BREAKOUT-resultados-veredicto.md` |
+| 5 | **Forex/Materias Primas**: SATAR-1 original sin recalibrar, sobre EURUSD/GBPUSD/USDJPY/XAUUSD | ❌ NO APROBADO | `docs/FOREX-resultados-veredicto.md` |
 
-Las tres primeras hipótesis carecen de edge in-sample y out-of-sample. La cuarta hipótesis (BREAKOUT-ATR) es la única que arrojó una expectativa neta combinada positiva (+0.0032R) y rentabilidad real (+$2,043.15 en la cartera), demostrando la existencia de un edge real que falla temporalmente en consolidaciones largas pero triunfa en periodos expansivos.
+Las hipótesis 1, 2, 3 y 5 carecen de edge in-sample/out-of-sample creíble. La Hipótesis 4 (BREAKOUT-ATR) es la única que arrojó una expectativa neta combinada positiva (+0.0032R) y rentabilidad real (+$2,043.15 en la cartera) — aunque con riesgo de cola severo (Monte Carlo: drawdown de hasta -95% en escenarios plausibles). La Hipótesis 5 (forex) es un rechazo de otro tipo: no es que pierda dinero de forma clara, es que la regla original casi no dispara en ese mercado (120-331 trades en 15 años × 4 activos) y lo poco que dispara está esencialmente en cero.
 
 ## 1. Organización del repositorio
 
@@ -73,7 +74,7 @@ Para poner el proyecto en marcha en **modo demo (simulación en Bybit Testnet)**
 1.  **Refinar la Hipótesis 4 (Bollinger Squeeze Filter):** Modificar `breakout_backtest.py` para añadir un filtro de régimen de corto plazo basado en la compresión de las bandas de Bollinger diarias. Solo se operan breakouts si las bandas están expandiéndose (evitando consolidaciones maduras y falsas rupturas). Es la opción más rápida para modo demo.
 2.  **Probar una quinta hipótesis (Pairs Trading / Arbitraje Estadístico):** Operar el spread de cointegración entre activos altamente correlacionados (ej. SOL vs ETH o BTC). Al ser mean-reverting, el edge es estructuralmente más estable ante comisiones.
 3.  ~~**Iniciar modo demo seco de BREAKOUT-ATR**~~ — **ya en curso** (ver §9): desplegado en Render desde el 2026-07-20, demo Fase-9 de 90 días activa en Bybit Testnet sobre SOLUSDT.
-4.  **Hipótesis 5 (Forex/Materias Primas)** — en progreso, ver §10: mismo motor SATAR-1 sin recalibrar sobre EURUSD/GBPUSD/USDJPY/XAUUSD, para probar si la regla original tiene edge fuera de cripto.
+4.  ~~**Hipótesis 5 (Forex/Materias Primas)**~~ — **completada, NO APROBADO** (ver §10 y `docs/FOREX-resultados-veredicto.md`): la regla original casi no dispara en forex y lo poco que dispara está en cero.
 
 ## 7. Cómo retomar (comandos)
 
@@ -115,14 +116,16 @@ El bot BREAKOUT-ATR/SOLUSDT lleva desplegado en Render (`trading-bot-satar.onren
 
 **Reconciliación de historial:** mientras se hacía esta auditoría, `origin/main` recibió una serie de hotfixes operativos directos (errores 500, carga de klines, filtros del dashboard) en paralelo. Ambos historiales se unificaron con un merge real (`--allow-unrelated-histories`, no squash ni force-push) que preserva la autoría completa de los dos lados.
 
-## 10. Hipótesis 5 — Forex/Materias Primas (en progreso)
+## 10. Hipótesis 5 — Forex/Materias Primas (❌ NO APROBADO)
 
-Tras el veredicto NO APROBADO/VIABLE de las 4 hipótesis en cripto, se decidió probar si la regla SATAR-1 original (sin recalibrar ningún parámetro P01-P37) tiene edge en forex — un mercado con microestructura distinta (sin comisión taker, spreads más bajos, sesiones horarias).
+Se probó si la regla SATAR-1 original (sin recalibrar ningún parámetro P01-P37) tiene edge en forex — un mercado con microestructura distinta (sin comisión taker, spreads más bajos, sesiones horarias). Ver `docs/FOREX-resultados-veredicto.md` para el detalle completo. Resumen:
 
-- **Activos:** EURUSD, GBPUSD, USDJPY, XAUUSD · **Fuente:** ticks de Dukascopy (gratuito, sin API key) resampleados a M5.
-- **Adaptaciones (solo de infraestructura, no de reglas de trading):** fricciones calibradas por par (`satar_forex_config.py`), offset D1 a las 22:00 UTC (cierre NY, convención forex — requirió añadir un parámetro `offset` opcional a `resample()`/`Engine` en `satar_backtest.py`, retrocompatible).
-- **Folds:** 4 folds anclados-rodantes sobre 2010-2025, holdout desde 2025-01-01.
-- **Estado:** descarga de datos en curso (`download_forex.py`, ~16 años × 4 activos vía Dukascopy — proceso lento, horas de cómputo). WFO y Monte Carlo (`satar_wfo_forex.py`, `satar_montecarlo_forex.py`) implementados y con el fix de equity compuesto ya aplicado, pendientes de ejecutar hasta tener los datos completos.
+- **Activos:** EURUSD, GBPUSD, USDJPY, XAUUSD · **Fuente:** ticks de Dukascopy resampleados a M5, 2010 → presente.
+- **Adaptaciones (solo infraestructura, no reglas de trading):** fricciones calibradas por par, offset D1 a las 22:00 UTC (cierre NY).
+- **Bug importante encontrado durante esta fase:** pandas ignora silenciosamente `offset`/`origin` en `resample()` para frecuencias no-Tick-like como `'1D'` — el ajuste de sesión de la Fase F1 nunca había tenido efecto real hasta corregirse con un desplazamiento manual del índice.
+- **WFO:** OOS pooled 69 trades, expectancy -0.054R (IS pooled 262 trades, +0.034R).
+- **Monte Carlo** (config congelada, 120 trades no-holdout): expectancy base -0.0027R (prácticamente plano), fricciones estresadas FALLA (p25=-0.0614R), drawdown bootstrap moderado (p95=-17%, peor=-27%, mucho menos severo que BREAKOUT-ATR en cripto).
+- **Veredicto:** a diferencia de las demás hipótesis, aquí no hay un resultado claramente negativo — hay muy poca señal (120-331 trades en 15 años × 4 activos) y lo que hay está esencialmente en cero. No se recomienda operar esta forma de la hipótesis.
 
 ## 11. Exploración — ¿ampliar el universo de activos de BREAKOUT-ATR? (2026-07-21)
 
