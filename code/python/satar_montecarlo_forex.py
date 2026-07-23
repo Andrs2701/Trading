@@ -307,7 +307,7 @@ def main():
     print(f"MC-2 expectancy p25 con fricciones estresadas: {mc2['expectancy_p25']:.4f} R [{'OK' if mc2['pasa_p25_positivo'] else 'FAIL'}]")
     print(f"MC-3 caída de expectancy con ruido: {mc3['caida_relativa']:.1%} [{'FRAGIL' if mc3['gatillo_fragil'] else 'ROBUSTO'}]")
     criticos = [s for s in sens if s["critico"]]
-    print(f"Sensibilidad: {len(criticos)} parámetros críticos (|Δ|>30%)")
+    print(f"Sensibilidad: {len(criticos)} parámetros críticos (delta>30%)")
     print(f"Concentración activo: {stab['max_share_activo']:.1%} [{'ALARMA' if stab['alarma_concentracion_activo'] else 'ok'}]")
     print(f"Concentración temporal: {stab['max_share_tercio']:.1%} [{'ALARMA' if stab['alarma_concentracion_temporal'] else 'ok'}]")
     print("\n[OK] resultados -> results/montecarlo_results_forex.json")
