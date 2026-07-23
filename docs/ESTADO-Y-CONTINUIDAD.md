@@ -12,7 +12,7 @@
 
 ## 0. TL;DR
 
-Se han probado **5 hipótesis de trading algorítmico** (4 en cripto perpetuos + 1 en forex/materias primas), todas con el mismo protocolo de rigor (formalización → diagnóstico → multi-activo → Walk-Forward Optimization → Monte Carlo → veredicto, con holdout intocable y prohibición explícita de ajustar parámetros a mano mirando resultados). **Las 5 fueron rechazadas formalmente bajo WFO, pero la Hipótesis 4 demostró viabilidad estructural.**
+Se han probado **6 hipótesis de trading algorítmico** (4 tendenciales en cripto + 1 en forex/materias primas + 1 de reversión a la media), todas con el mismo protocolo de rigor (formalización → diagnóstico → multi-activo → Walk-Forward Optimization → Monte Carlo → veredicto, con holdout intocable y prohibición explícita de ajustar parámetros a mano mirando resultados). **Las 6 fueron rechazadas formalmente bajo el criterio estricto del proyecto, pero la Hipótesis 6 (pairs trading) es, por un margen considerable, la más prometedora — la primera en resolver el problema de drawdown catastrófico que afectó a todas las tendenciales.**
 
 | # | Hipótesis | Veredicto | Documentación |
 |---|---|---|---|
@@ -21,8 +21,9 @@ Se han probado **5 hipótesis de trading algorítmico** (4 en cripto perpetuos +
 | 3 | **SWEEP**: liquidity sweep / stop hunt sobre estructura semanal | ❌ NO APROBADO | `docs/SWEEP-formalizacion.md`, `docs/SWEEP-resultados-veredicto.md` |
 | 4 | **BREAKOUT-ATR**: momentum de ruptura de rango diario con expansión de volatilidad | ⚠️ NO APROBADO WFO / VIABLE | `docs/BREAKOUT-formalizacion.md`, `docs/BREAKOUT-resultados-veredicto.md` |
 | 5 | **Forex/Materias Primas**: SATAR-1 original sin recalibrar, sobre EURUSD/GBPUSD/USDJPY/XAUUSD | ❌ NO APROBADO | `docs/FOREX-resultados-veredicto.md` |
+| 6 | **Pairs Trading**: reversión a la media del spread entre criptos cointegradas (H4) | ⚠️ NO APROBADO (WFE=0.44, bajo el umbral 0.5) / LA MÁS PROMETEDORA | `docs/PAIRS-formalizacion.md`, `docs/PAIRS-resultados-veredicto.md` |
 
-Las hipótesis 1, 2, 3 y 5 carecen de edge in-sample/out-of-sample creíble. La Hipótesis 4 (BREAKOUT-ATR) es la única que arrojó una expectativa neta combinada positiva (+0.0032R) y rentabilidad real (+$2,043.15 en la cartera) — aunque con riesgo de cola severo (Monte Carlo: drawdown de hasta -95% en escenarios plausibles). La Hipótesis 5 (forex) es un rechazo de otro tipo: no es que pierda dinero de forma clara, es que la regla original casi no dispara en ese mercado (120-331 trades en 15 años × 4 activos) y lo poco que dispara está esencialmente en cero.
+Las hipótesis 1, 2, 3 y 5 carecen de edge in-sample/out-of-sample creíble. La Hipótesis 4 (BREAKOUT-ATR) arrojó una expectativa neta combinada positiva pero con riesgo de cola severo (Monte Carlo: drawdown de hasta -95% en escenarios plausibles, sin importar cuántos activos correlacionados se agreguen — ver §11). La Hipótesis 6 (pairs trading, H4) es cualitativamente distinta: mismo problema de drawdown catastrófico **resuelto** (-21%/-36% contra -78%/-96% en cualquier variante tendencial), sensibilidad limpia (0 parámetros críticos, la primera vez en el proyecto), pero no pasa el umbral formal de WFE y depende sustancialmente de un solo par (ETHUSDT-XRPUSDT) — ver §12.
 
 ## 1. Organización del repositorio
 
@@ -168,3 +169,13 @@ Se re-corrió el WFO y Monte Carlo con el universo ampliado a 11 activos (BTC/ET
 **Por qué el drawdown no se mueve pese a todo lo demás mejorando:** la concentración (cuántos activos generan la ganancia) y el riesgo de racha (cuántas pérdidas seguidas puede tener la secuencia) son problemas *distintos*. Diversificar entre más criptos arregla el primero — ya no depende de un solo activo — pero no arregla el segundo, porque todas las criptos tienden a entrar en consolidación al mismo tiempo (están correlacionadas), y con win rate ~26% y riesgo fijo del 1% por operación, una racha larga de pérdidas simultánea en varios activos sigue siendo plausible y sigue componiendo hacia abajo con la misma fuerza. Agregar más activos correlacionados no reduce ese riesgo estructural.
 
 **Veredicto: sigue sin recomendarse operar el universo ampliado con capital real.** El hallazgo positivo real de esta ronda — INJUSDT y UNIUSDT tienen edge crudo genuino, UNIUSDT en particular con el drawdown individual más bajo de todos los activos probados — queda documentado para si en el futuro se explora reducir el riesgo por operación (position sizing más conservador) en vez de solo agregar activos, que es la palanca que realmente podría atacar el problema de racha de pérdidas.
+
+## 12. Hipótesis 6 — Pairs Trading / Reversión a la Media (⚠️ el resultado más prometedor del proyecto)
+
+Ver `docs/PAIRS-formalizacion.md` (reglas exactas) y `docs/PAIRS-resultados-veredicto.md` (resultados completos). Motivada directamente por §11: si el problema de fondo de las hipótesis tendenciales es una racha de pérdidas correlacionada entre activos que se mueven juntos, una estrategia que opera el *spread* entre dos activos cointegrados (no la dirección del mercado) tiene una naturaleza de riesgo distinta.
+
+- **Screening de cointegración**: 6 de 55 pares posibles cointegran (Engle-Granger + ADF, p<0.05); 4 de ellos en las 3 temporalidades probadas (H1/H4/D1).
+- **WFO por temporalidad** (decidida dentro del WFO, no elegida mirando resultados): H1 rechazado (NO RENTABLE OOS), D1 sobreoptimiza (IS excelente, OOS se derrumba), **H4 destaca con WFE=0.44** — el mejor de las 6 hipótesis del proyecto, con 2 de 3 folds OOS mejores que IS.
+- **Monte Carlo (H4)**: drawdown bootstrap **-20.8% p95 / -36.1% peor caso** — dramáticamente mejor que cualquier variante tendencial (-78% a -96%). Sensibilidad: 0 de 8 parámetros críticos, primera vez en el proyecto. Fricciones estresadas: pasa.
+- **La alarma real**: concentración por par (139.4%) — ETHUSDT-XRPUSDT aporta más que todo el PnL neto del pool; los otros 5 pares suman negativo o casi plano.
+- **Veredicto**: no aprobado formalmente (WFE=0.44 < 0.5), pero es el único que resuelve el problema de riesgo de cola que afectó a las 5 hipótesis anteriores. Caminos de continuación documentados: ampliar el universo de pares candidatos, o re-optimizar excluyendo ETHUSDT-XRPUSDT (ambos requieren un WFO nuevo, no se puede decidir mirando el resultado ya obtenido).
