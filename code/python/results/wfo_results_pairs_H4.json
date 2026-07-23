@@ -1,0 +1,128 @@
+{
+  "timeframe": "H4",
+  "pairs": [
+    "XRPUSDT-UNIUSDT",
+    "ETHUSDT-SOLUSDT",
+    "ETHUSDT-XRPUSDT",
+    "ETHUSDT-AVAXUSDT",
+    "XRPUSDT-BNBUSDT",
+    "ETHUSDT-UNIUSDT"
+  ],
+  "grid_keys": [
+    "lookback_bars",
+    "z_entry",
+    "z_exit",
+    "z_stop"
+  ],
+  "holdout_start": "2025-07-01 00:00:00+00:00",
+  "folds": [
+    {
+      "fold": "F1",
+      "is_window": [
+        "2020-01-01",
+        "2023-01-01"
+      ],
+      "oos_window": [
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      "best_overrides": {
+        "lookback_bars": 60,
+        "z_entry": 2.5,
+        "z_exit": 0.25,
+        "z_stop": 4.0
+      },
+      "is": {
+        "obj": 0.372,
+        "trades": 352,
+        "expectancy_R": 0.0252,
+        "max_dd": -0.0547,
+        "win_rate": 0.4773
+      },
+      "oos": {
+        "obj": 0.3992,
+        "trades": 158,
+        "expectancy_R": 0.0372,
+        "max_dd": -0.0343,
+        "win_rate": 0.4494
+      },
+      "elapsed_s": 25.6
+    },
+    {
+      "fold": "F2",
+      "is_window": [
+        "2020-01-01",
+        "2024-01-01"
+      ],
+      "oos_window": [
+        "2024-01-01",
+        "2025-01-01"
+      ],
+      "best_overrides": {
+        "lookback_bars": 60,
+        "z_entry": 2.5,
+        "z_exit": 0.25,
+        "z_stop": 4.0
+      },
+      "is": {
+        "obj": 0.5165,
+        "trades": 510,
+        "expectancy_R": 0.0291,
+        "max_dd": -0.0547,
+        "win_rate": 0.4686
+      },
+      "oos": {
+        "obj": 0.7181,
+        "trades": 144,
+        "expectancy_R": 0.0775,
+        "max_dd": -0.0592,
+        "win_rate": 0.4583
+      },
+      "elapsed_s": 26.7
+    },
+    {
+      "fold": "F3",
+      "is_window": [
+        "2020-01-01",
+        "2025-01-01"
+      ],
+      "oos_window": [
+        "2025-01-01",
+        "2025-07-01"
+      ],
+      "best_overrides": {
+        "lookback_bars": 60,
+        "z_entry": 2.5,
+        "z_exit": 0.25,
+        "z_stop": 4.0
+      },
+      "is": {
+        "obj": 0.7882,
+        "trades": 654,
+        "expectancy_R": 0.0399,
+        "max_dd": -0.0592,
+        "win_rate": 0.4664
+      },
+      "oos": {
+        "obj": -0.3795,
+        "trades": 68,
+        "expectancy_R": -0.055,
+        "max_dd": -0.039,
+        "win_rate": 0.3676
+      },
+      "elapsed_s": 26.8
+    }
+  ],
+  "mean_is_obj": 0.5589,
+  "mean_oos_obj": 0.246,
+  "wfe": 0.4401,
+  "wfe_verdict": "DEBIL (0.4<=WFE<0.5)",
+  "rentable_is": true,
+  "rentable_oos": true,
+  "config_congelada": {
+    "lookback_bars": 60,
+    "z_entry": 2.5,
+    "z_exit": 0.25,
+    "z_stop": 4.0
+  }
+}
