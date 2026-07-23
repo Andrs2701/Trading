@@ -194,6 +194,13 @@ def run_wfo(grid_name: str, jobs: int, assets: list) -> dict:
               f"E_R={best_is_m['expectancy_R']}) | OOS obj={oos_obj:.4f} "
               f"(N={oos_m['trades']}, E_R={oos_m['expectancy_R']}) | best={best_ov} | {fold_res['elapsed_s']}s")
 
+        # Guardado incremental por fold: si el proceso muere a mitad de camino
+        # (reinicio de la maquina -- ya paso 2 veces en esta sesion con las
+        # descargas), no se pierden los folds ya completados.
+        os.makedirs("results", exist_ok=True)
+        with open("results/wfo_results_forex_partial.json", "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+
     mean_is = float(np.mean(is_objs)) if is_objs else 0.0
     mean_oos = float(np.mean(oos_objs)) if oos_objs else 0.0
     wfe = mean_oos / mean_is if mean_is > 0 else None
