@@ -42,7 +42,7 @@ Este filtro es sobre una **propiedad estadística del precio** (cointegración),
 
 ## 5. Position sizing
 
-Dollar-neutral: el valor nocional de ambas piernas es igual al momento de entrada. Riesgo definido como % de equity arriesgado si el spread llega a `z_stop` desde `z_entry` (equivalente al concepto de "distancia al stop" de las hipótesis anteriores) — `risk_pct` fijo en 1%, igual que el resto del proyecto, para comparabilidad.
+**Ajustado durante la implementación (antes de ver cualquier resultado de backtest):** en vez de dólar-neutral ingenuo, la pierna B se dimensiona como `beta_t × notional_A` (ponderada por el hedge ratio vigente), no en partes iguales. Con este ponderado, el PnL de la posición combinada es aproximadamente proporcional al movimiento del spread mismo (`PnL ≈ notional_A · Δspread`), lo que permite dimensionar el riesgo directamente por la distancia `z_entry → z_stop` traducida a unidades de spread vía la desviación estándar rodante — es la forma estándar en la literatura de pairs trading (más limpia que dólar-neutral ingenuo, que no aísla el riesgo al spread cuando beta ≠ 1). Riesgo definido como % de equity arriesgado si el spread llega a `z_stop` desde `z_entry` — `risk_pct` fijo en 1%, igual que el resto del proyecto, para comparabilidad.
 
 ## 6. Fricciones
 
