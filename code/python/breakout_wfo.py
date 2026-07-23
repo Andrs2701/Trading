@@ -14,6 +14,12 @@ from breakout_backtest import BreakoutParams, BreakoutEngine
 
 # ---------------------------------------------------------------------------
 ASSETS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"]
+# Exploracion 2026-07-23: se probo con +LINKUSDT +AVAXUSDT +INJUSDT +UNIUSDT
+# +ARBUSDT +OPUSDT (11 activos) -- ver docs/ESTADO-Y-CONTINUIDAD.md S11.
+# mean_oos pasa a positivo (+0.29) pero WFE=0.36 -> veredicto "SOBREOPTIMIZACION"
+# (un solo fold de 2025 H1 carga todo el resultado). MC bootstrap DD no mejora
+# (-81.9% p95 / -96.2% peor caso). No se dejo aqui por defecto, mismo motivo
+# que la exploracion anterior.
 # Exploracion 2026-07-21: se probo con +LINKUSDT +AVAXUSDT (ver docs/ESTADO-Y-CONTINUIDAD.md
 # S11). Mejora el OOS pero sigue NO RENTABLE; MC bootstrap DD no mejora (-78.7% p95).
 # No se dejo aqui por defecto para no sobreescribir results/wfo_results_breakout.json

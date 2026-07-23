@@ -1,0 +1,314 @@
+{
+  "grid": "coarse",
+  "grid_keys": [
+    "vol_spike_mult",
+    "range_expansion_mult",
+    "stop_atr_mult"
+  ],
+  "assets": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT",
+    "BNBUSDT",
+    "LINKUSDT",
+    "AVAXUSDT",
+    "INJUSDT",
+    "UNIUSDT",
+    "ARBUSDT",
+    "OPUSDT"
+  ],
+  "holdout_start": "2025-07-01 00:00:00+00:00",
+  "folds": [
+    {
+      "fold": "F1",
+      "is_window": [
+        "2020-01-01",
+        "2023-01-01"
+      ],
+      "oos_window": [
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      "best_overrides": {
+        "vol_spike_mult": 1.8,
+        "range_expansion_mult": 1.4,
+        "stop_atr_mult": 1.5
+      },
+      "is": {
+        "obj": 1.2214,
+        "trades": 1404,
+        "expectancy_R": 0.0962,
+        "max_dd": -0.3902,
+        "win_rate": 0.2536
+      },
+      "oos": {
+        "obj": -0.1708,
+        "trades": 887,
+        "expectancy_R": -0.0219,
+        "max_dd": -0.5646,
+        "win_rate": 0.2424
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.5
+          },
+          "obj": 1.2214,
+          "trades": 1404,
+          "expectancy_R": 0.0962,
+          "max_dd": -0.3902,
+          "win_rate": 0.2536
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.5,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.5
+          },
+          "obj": 0.9441,
+          "trades": 1521,
+          "expectancy_R": 0.0806,
+          "max_dd": -0.4662,
+          "win_rate": 0.2518
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.8417,
+          "trades": 1321,
+          "expectancy_R": 0.0713,
+          "max_dd": -0.4157,
+          "win_rate": 0.2733
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.2
+          },
+          "obj": 0.7727,
+          "trades": 1494,
+          "expectancy_R": 0.0677,
+          "max_dd": -0.4768,
+          "win_rate": 0.2416
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.5,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.7548,
+          "trades": 1434,
+          "expectancy_R": 0.0651,
+          "max_dd": -0.4535,
+          "win_rate": 0.2713
+        }
+      ],
+      "elapsed_s": 70.0
+    },
+    {
+      "fold": "F2",
+      "is_window": [
+        "2020-01-01",
+        "2024-01-01"
+      ],
+      "oos_window": [
+        "2024-01-01",
+        "2025-01-01"
+      ],
+      "best_overrides": {
+        "vol_spike_mult": 1.8,
+        "range_expansion_mult": 1.4,
+        "stop_atr_mult": 1.8
+      },
+      "is": {
+        "obj": 0.6968,
+        "trades": 2161,
+        "expectancy_R": 0.0543,
+        "max_dd": -0.5243,
+        "win_rate": 0.2684
+      },
+      "oos": {
+        "obj": -0.0577,
+        "trades": 742,
+        "expectancy_R": -0.0085,
+        "max_dd": -0.5986,
+        "win_rate": 0.2412
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.6968,
+          "trades": 2161,
+          "expectancy_R": 0.0543,
+          "max_dd": -0.5243,
+          "win_rate": 0.2684
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.5,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.6657,
+          "trades": 2332,
+          "expectancy_R": 0.046,
+          "max_dd": -0.468,
+          "win_rate": 0.2654
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.5
+          },
+          "obj": 0.6319,
+          "trades": 2291,
+          "expectancy_R": 0.0505,
+          "max_dd": -0.5646,
+          "win_rate": 0.2492
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.2,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.5494,
+          "trades": 2413,
+          "expectancy_R": 0.038,
+          "max_dd": -0.4798,
+          "win_rate": 0.2648
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.2,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.5032,
+          "trades": 2533,
+          "expectancy_R": 0.0369,
+          "max_dd": -0.5374,
+          "win_rate": 0.2653
+        }
+      ],
+      "elapsed_s": 82.9
+    },
+    {
+      "fold": "F3",
+      "is_window": [
+        "2020-01-01",
+        "2025-01-01"
+      ],
+      "oos_window": [
+        "2025-01-01",
+        "2025-07-01"
+      ],
+      "best_overrides": {
+        "vol_spike_mult": 1.8,
+        "range_expansion_mult": 1.2,
+        "stop_atr_mult": 1.8
+      },
+      "is": {
+        "obj": 0.4661,
+        "trades": 3425,
+        "expectancy_R": 0.0341,
+        "max_dd": -0.6572,
+        "win_rate": 0.2613
+      },
+      "oos": {
+        "obj": 1.0961,
+        "trades": 307,
+        "expectancy_R": 0.2014,
+        "max_dd": -0.444,
+        "win_rate": 0.2997
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.2,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.4661,
+          "trades": 3425,
+          "expectancy_R": 0.0341,
+          "max_dd": -0.6572,
+          "win_rate": 0.2613
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.4392,
+          "trades": 2903,
+          "expectancy_R": 0.0382,
+          "max_dd": -0.7385,
+          "win_rate": 0.2615
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.8,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.5
+          },
+          "obj": 0.3637,
+          "trades": 3083,
+          "expectancy_R": 0.0332,
+          "max_dd": -0.814,
+          "win_rate": 0.2416
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.5,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.2401,
+          "trades": 3145,
+          "expectancy_R": 0.0215,
+          "max_dd": -0.8056,
+          "win_rate": 0.2576
+        },
+        {
+          "overrides": {
+            "vol_spike_mult": 1.2,
+            "range_expansion_mult": 1.4,
+            "stop_atr_mult": 1.8
+          },
+          "obj": 0.2172,
+          "trades": 3252,
+          "expectancy_R": 0.0187,
+          "max_dd": -0.7805,
+          "win_rate": 0.2583
+        }
+      ],
+      "elapsed_s": 104.7
+    }
+  ],
+  "mean_is_obj": 0.7948,
+  "mean_oos_obj": 0.2892,
+  "wfe": 0.3639,
+  "wfe_verdict": "SOBREOPTIMIZACION (WFE<0.4)",
+  "rentable_is": true,
+  "rentable_oos": true,
+  "config_congelada": {
+    "vol_spike_mult": 1.8,
+    "range_expansion_mult": 1.2,
+    "stop_atr_mult": 1.8
+  }
+}

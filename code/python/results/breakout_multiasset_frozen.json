@@ -1,32 +1,182 @@
 {
-  "AVAXUSDT": {
-    "trades": 397,
-    "win_rate": 0.2594,
-    "profit_factor": 1.106,
-    "expectancy_R": 0.0897,
-    "max_drawdown": -0.1862,
-    "trades_por_año": 72.7,
-    "symbol": "AVAXUSDT",
-    "rango": "2020-09-23 -> 2026-06-30"
+  "DOGEUSDT": {
+    "trades": 405,
+    "win_rate": 0.2395,
+    "profit_factor": 1.004,
+    "expectancy_R": 0.0201,
+    "max_drawdown": -0.4332,
+    "trades_por_año": 72.1,
+    "symbol": "DOGEUSDT",
+    "rango": "2020-07-10 -> 2026-06-30"
   },
-  "ADAUSDT": {
-    "trades": 374,
-    "win_rate": 0.2647,
-    "profit_factor": 0.968,
-    "expectancy_R": -0.0067,
-    "max_drawdown": -0.3223,
-    "trades_por_año": 61.1,
-    "symbol": "ADAUSDT",
-    "rango": "2020-01-31 -> 2026-06-30"
+  "DOTUSDT": {
+    "trades": 294,
+    "win_rate": 0.2347,
+    "profit_factor": 0.688,
+    "expectancy_R": -0.187,
+    "max_drawdown": -0.5202,
+    "trades_por_año": 53.7,
+    "symbol": "DOTUSDT",
+    "rango": "2020-08-22 -> 2026-06-30"
   },
-  "LINKUSDT": {
-    "trades": 348,
-    "win_rate": 0.2931,
-    "profit_factor": 1.213,
-    "expectancy_R": 0.1631,
-    "max_drawdown": -0.2214,
-    "trades_por_año": 56.4,
-    "symbol": "LINKUSDT",
-    "rango": "2020-01-17 -> 2026-06-30"
+  "ATOMUSDT": {
+    "trades": 290,
+    "win_rate": 0.2345,
+    "profit_factor": 0.696,
+    "expectancy_R": -0.1851,
+    "max_drawdown": -0.4741,
+    "trades_por_año": 47.5,
+    "symbol": "ATOMUSDT",
+    "rango": "2020-02-07 -> 2026-06-30"
+  },
+  "NEARUSDT": {
+    "trades": 344,
+    "win_rate": 0.2762,
+    "profit_factor": 1.03,
+    "expectancy_R": 0.037,
+    "max_drawdown": -0.3019,
+    "trades_por_año": 64.6,
+    "symbol": "NEARUSDT",
+    "rango": "2020-10-15 -> 2026-06-30"
+  },
+  "LTCUSDT": {
+    "trades": 315,
+    "win_rate": 0.2603,
+    "profit_factor": 0.987,
+    "expectancy_R": 0.0059,
+    "max_drawdown": -0.1926,
+    "trades_por_año": 50.9,
+    "symbol": "LTCUSDT",
+    "rango": "2020-01-09 -> 2026-06-30"
+  },
+  "TRXUSDT": {
+    "trades": 336,
+    "win_rate": 0.2262,
+    "profit_factor": 0.902,
+    "expectancy_R": -0.0582,
+    "max_drawdown": -0.3027,
+    "trades_por_año": 54.4,
+    "symbol": "TRXUSDT",
+    "rango": "2020-01-15 -> 2026-06-30"
+  },
+  "ETCUSDT": {
+    "trades": 389,
+    "win_rate": 0.2468,
+    "profit_factor": 1.007,
+    "expectancy_R": 0.0232,
+    "max_drawdown": -0.3589,
+    "trades_por_año": 63.0,
+    "symbol": "ETCUSDT",
+    "rango": "2020-01-16 -> 2026-06-30"
+  },
+  "FILUSDT": {
+    "trades": 327,
+    "win_rate": 0.2661,
+    "profit_factor": 1.015,
+    "expectancy_R": 0.0293,
+    "max_drawdown": -0.4229,
+    "trades_por_año": 60.9,
+    "symbol": "FILUSDT",
+    "rango": "2020-10-16 -> 2026-06-30"
+  },
+  "UNIUSDT": {
+    "trades": 278,
+    "win_rate": 0.2986,
+    "profit_factor": 1.112,
+    "expectancy_R": 0.0838,
+    "max_drawdown": -0.1826,
+    "trades_por_año": 50.7,
+    "symbol": "UNIUSDT",
+    "rango": "2020-09-18 -> 2026-06-30"
+  },
+  "AAVEUSDT": {
+    "trades": 286,
+    "win_rate": 0.2483,
+    "profit_factor": 0.91,
+    "expectancy_R": -0.0463,
+    "max_drawdown": -0.3652,
+    "trades_por_año": 53.1,
+    "symbol": "AAVEUSDT",
+    "rango": "2020-10-16 -> 2026-06-30"
+  },
+  "SANDUSDT": {
+    "trades": 349,
+    "win_rate": 0.255,
+    "profit_factor": 0.995,
+    "expectancy_R": 0.0127,
+    "max_drawdown": -0.2394,
+    "trades_por_año": 68.1,
+    "symbol": "SANDUSDT",
+    "rango": "2021-01-25 -> 2026-06-30"
+  },
+  "MANAUSDT": {
+    "trades": 352,
+    "win_rate": 0.267,
+    "profit_factor": 1.011,
+    "expectancy_R": 0.0256,
+    "max_drawdown": -0.3068,
+    "trades_por_año": 70.7,
+    "symbol": "MANAUSDT",
+    "rango": "2021-03-15 -> 2026-06-30"
+  },
+  "ALGOUSDT": {
+    "trades": 270,
+    "win_rate": 0.237,
+    "profit_factor": 0.869,
+    "expectancy_R": -0.0734,
+    "max_drawdown": -0.2767,
+    "trades_por_año": 46.9,
+    "symbol": "ALGOUSDT",
+    "rango": "2020-06-16 -> 2026-06-30"
+  },
+  "ARBUSDT": {
+    "trades": 206,
+    "win_rate": 0.2573,
+    "profit_factor": 1.069,
+    "expectancy_R": 0.0634,
+    "max_drawdown": -0.1921,
+    "trades_por_año": 69.7,
+    "symbol": "ARBUSDT",
+    "rango": "2023-03-23 -> 2026-06-30"
+  },
+  "OPUSDT": {
+    "trades": 219,
+    "win_rate": 0.2603,
+    "profit_factor": 1.045,
+    "expectancy_R": 0.0484,
+    "max_drawdown": -0.3128,
+    "trades_por_año": 57.7,
+    "symbol": "OPUSDT",
+    "rango": "2022-06-01 -> 2026-06-30"
+  },
+  "SUIUSDT": {
+    "trades": 184,
+    "win_rate": 0.212,
+    "profit_factor": 0.859,
+    "expectancy_R": -0.0857,
+    "max_drawdown": -0.2174,
+    "trades_por_año": 63.9,
+    "symbol": "SUIUSDT",
+    "rango": "2023-05-03 -> 2026-06-30"
+  },
+  "INJUSDT": {
+    "trades": 206,
+    "win_rate": 0.2718,
+    "profit_factor": 1.138,
+    "expectancy_R": 0.1001,
+    "max_drawdown": -0.2288,
+    "trades_por_año": 58.9,
+    "symbol": "INJUSDT",
+    "rango": "2022-08-17 -> 2026-06-30"
+  },
+  "APTUSDT": {
+    "trades": 167,
+    "win_rate": 0.2575,
+    "profit_factor": 0.966,
+    "expectancy_R": -0.0075,
+    "max_drawdown": -0.2267,
+    "trades_por_año": 48.9,
+    "symbol": "APTUSDT",
+    "rango": "2022-10-19 -> 2026-06-30"
   }
 }

@@ -148,3 +148,23 @@ LINKUSDT y AVAXUSDT fueron los únicos con expectancy positiva comparable a SOLU
 - **Monte Carlo**: expectancy sube a +0.0405R (12x vs 0.0032R), fricciones estresadas ahora SÍ pasan (antes fallaban), concentración de activo baja de 468% a 78.5% (LINK ahora comparte el peso con SOL) — todas mejoras reales. **Pero el drawdown de bootstrap NO mejora**: p95 sigue en -78.7% (peor caso -95.2%), prácticamente igual de catastrófico que antes (-84.1%).
 
 **Veredicto: NO agregar LINKUSDT/AVAXUSDT a la operativa en vivo.** El drawdown de Monte Carlo es la razón — un escenario plausible de -78% a -95% de la cuenta es inaceptable sin importar cuánto mejore la expectativa promedio. `wfo_results_breakout.json`/`montecarlo_results_breakout.json` en producción se dejaron en su versión original de 5 activos (respaldo en `results/*_5activos_original.json`) para no desalinear el dashboard, que solo muestra SOL/ETH/BTC.
+
+### Segunda ronda (2026-07-23): screening de 18 candidatos más
+
+A pedido del usuario ("no puedo irme con pocos trades y un solo activo"), se amplió el screening a 18 criptos líquidas más (sin re-optimizar nada, `breakout_multiasset_frozen.py`, resultados en `results/breakout_multiasset_frozen.json`). Los dos con expectancy destacable:
+
+| Activo | Trades | PF | Expectancy | MaxDD |
+|---|---|---|---|---|
+| **INJUSDT** | 206 | 1.138 | **+0.100R** | -22.9% |
+| **UNIUSDT** | 278 | 1.112 | **+0.084R** | **-18.3%** (el más bajo de todos los positivos, mejor que SOL) |
+
+(El resto — DOGE, DOT, ATOM, NEAR, LTC, TRX, ETC, FIL, SAND, MANA, ALGO, ARB, OP, SUI, APT — quedó entre plano y negativo; ARBUSDT +0.063R y OPUSDT +0.048R también positivos pero con menos historial, 3-4 años.)
+
+Se re-corrió el WFO y Monte Carlo con el universo ampliado a 11 activos (BTC/ETH/SOL/XRP/BNB/LINK/AVAX + INJ/UNI/ARB/OP; logs en `results/wfo_expanded2_11activos_log.txt` y `results/mc_expanded2_11activos_log.txt`):
+
+- **WFO**: mean_oos_obj pasa a **positivo por primera vez en todo el proyecto** (+0.2892), pero el veredicto formal es **"SOBREOPTIMIZACIÓN"** (WFE=0.36, bajo el umbral de 0.4 para siquiera calificar "débil"). Fold por fold explica por qué: 2023 OOS negativo (-0.022R, N=887), 2024 OOS negativo (-0.009R, N=742), 2025 H1 OOS **+0.201R (N=307)** — un solo semestre, con menos de la mitad de los trades de cualquiera de los otros dos folds, carga todo el promedio positivo. Mismo patrón de siempre (consolidación mata, expansión favorece), ahora con más activos pero el mismo problema de fondo.
+- **Monte Carlo** (3732 trades pooled): expectancy sube a +0.0479R, fricciones estresadas pasan (p25=+0.0234R), concentración de activo **por fin baja de la alarma** (49.6%, ok) y concentración temporal también (48.0%, ok) — 8 de 11 activos terminan en positivo (SOL +$10,291, AVAX +$6,569, LINK +$5,821, OP +$3,314, INJ +$2,546, UNI +$870, XRP +$147, ARB +$175; BTC -$4,554, BNB -$3,128, ETH -$1,314). **El drawdown de bootstrap NO mejora — de hecho empeora ligeramente**: p95=-81.9% (peor caso -96.2%, vs -84.1%/-78.7% de las rondas anteriores). Racha de pérdidas: p95=31, peor caso=54 operaciones seguidas.
+
+**Por qué el drawdown no se mueve pese a todo lo demás mejorando:** la concentración (cuántos activos generan la ganancia) y el riesgo de racha (cuántas pérdidas seguidas puede tener la secuencia) son problemas *distintos*. Diversificar entre más criptos arregla el primero — ya no depende de un solo activo — pero no arregla el segundo, porque todas las criptos tienden a entrar en consolidación al mismo tiempo (están correlacionadas), y con win rate ~26% y riesgo fijo del 1% por operación, una racha larga de pérdidas simultánea en varios activos sigue siendo plausible y sigue componiendo hacia abajo con la misma fuerza. Agregar más activos correlacionados no reduce ese riesgo estructural.
+
+**Veredicto: sigue sin recomendarse operar el universo ampliado con capital real.** El hallazgo positivo real de esta ronda — INJUSDT y UNIUSDT tienen edge crudo genuino, UNIUSDT en particular con el drawdown individual más bajo de todos los activos probados — queda documentado para si en el futuro se explora reducir el riesgo por operación (position sizing más conservador) en vez de solo agregar activos, que es la palanca que realmente podría atacar el problema de racha de pérdidas.

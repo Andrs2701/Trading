@@ -1,0 +1,215 @@
+{
+  "config": {
+    "vol_spike_mult": 1.8,
+    "range_expansion_mult": 1.2,
+    "stop_atr_mult": 1.8
+  },
+  "n_trades": 3732,
+  "expectancy_R_base": 0.0479,
+  "mc1_bootstrap": {
+    "dd_mean": -0.5965,
+    "dd_p95": -0.8186,
+    "dd_worst": -0.9625,
+    "max_loss_streak_p95": 31,
+    "max_loss_streak_worst": 54
+  },
+  "mc2_frictions": {
+    "expectancy_mean": 0.0236,
+    "expectancy_p25": 0.0234,
+    "expectancy_p05": 0.0232,
+    "pasa_p25_positivo": true
+  },
+  "mc3_price_noise": {
+    "expectancy_base": 0.0479,
+    "expectancy_mean_noisy": 0.0479,
+    "expectancy_p05_noisy": 0.045,
+    "caida_relativa": 0.0043,
+    "gatillo_fragil": false
+  },
+  "sensibilidad": [
+    {
+      "param": "lookback_hours",
+      "cambio": "-20%",
+      "valor": 19,
+      "expectancy_R": 0.0589,
+      "trades": 4002,
+      "delta_rel": 0.23,
+      "critico": false
+    },
+    {
+      "param": "lookback_hours",
+      "cambio": "+20%",
+      "valor": 29,
+      "expectancy_R": 0.0594,
+      "trades": 3463,
+      "delta_rel": 0.24,
+      "critico": false
+    },
+    {
+      "param": "vol_ma_window_hours",
+      "cambio": "-20%",
+      "valor": 16,
+      "expectancy_R": 0.0308,
+      "trades": 3702,
+      "delta_rel": -0.357,
+      "critico": true
+    },
+    {
+      "param": "vol_ma_window_hours",
+      "cambio": "+20%",
+      "valor": 24,
+      "expectancy_R": 0.0509,
+      "trades": 3731,
+      "delta_rel": 0.063,
+      "critico": false
+    },
+    {
+      "param": "ema_trail_n",
+      "cambio": "-20%",
+      "valor": 40,
+      "expectancy_R": 0.0453,
+      "trades": 3776,
+      "delta_rel": -0.054,
+      "critico": false
+    },
+    {
+      "param": "ema_trail_n",
+      "cambio": "+20%",
+      "valor": 60,
+      "expectancy_R": 0.0475,
+      "trades": 3694,
+      "delta_rel": -0.008,
+      "critico": false
+    },
+    {
+      "param": "hurst_window_days",
+      "cambio": "-20%",
+      "valor": 80,
+      "expectancy_R": 0.0302,
+      "trades": 3500,
+      "delta_rel": -0.37,
+      "critico": true
+    },
+    {
+      "param": "hurst_window_days",
+      "cambio": "+20%",
+      "valor": 120,
+      "expectancy_R": 0.0346,
+      "trades": 3679,
+      "delta_rel": -0.278,
+      "critico": false
+    },
+    {
+      "param": "hurst_filter",
+      "cambio": "-20%",
+      "valor": 0.41600000000000004,
+      "expectancy_R": 0.0532,
+      "trades": 6576,
+      "delta_rel": 0.111,
+      "critico": false
+    },
+    {
+      "param": "hurst_filter",
+      "cambio": "+20%",
+      "valor": 0.624,
+      "expectancy_R": 0.0553,
+      "trades": 90,
+      "delta_rel": 0.154,
+      "critico": false
+    },
+    {
+      "param": "stop_min_atr",
+      "cambio": "-20%",
+      "valor": 0.12,
+      "expectancy_R": 0.0479,
+      "trades": 3732,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "stop_min_atr",
+      "cambio": "+20%",
+      "valor": 0.18,
+      "expectancy_R": 0.0479,
+      "trades": 3732,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "stop_max_atr",
+      "cambio": "-20%",
+      "valor": 2.4000000000000004,
+      "expectancy_R": 0.0479,
+      "trades": 3732,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "stop_max_atr",
+      "cambio": "+20%",
+      "valor": 3.5999999999999996,
+      "expectancy_R": 0.0479,
+      "trades": 3732,
+      "delta_rel": 0.0,
+      "critico": false
+    }
+  ],
+  "estabilidad": {
+    "por_activo": {
+      "BTCUSDT": {
+        "trades": 471,
+        "pnl": -4554.21
+      },
+      "ETHUSDT": {
+        "trades": 464,
+        "pnl": -1313.53
+      },
+      "SOLUSDT": {
+        "trades": 396,
+        "pnl": 10290.77
+      },
+      "XRPUSDT": {
+        "trades": 356,
+        "pnl": 146.5
+      },
+      "BNBUSDT": {
+        "trades": 392,
+        "pnl": -3127.73
+      },
+      "LINKUSDT": {
+        "trades": 359,
+        "pnl": 5821.18
+      },
+      "AVAXUSDT": {
+        "trades": 410,
+        "pnl": 6569.4
+      },
+      "INJUSDT": {
+        "trades": 209,
+        "pnl": 2545.55
+      },
+      "UNIUSDT": {
+        "trades": 291,
+        "pnl": 870.11
+      },
+      "ARBUSDT": {
+        "trades": 182,
+        "pnl": 175.15
+      },
+      "OPUSDT": {
+        "trades": 202,
+        "pnl": 3313.54
+      }
+    },
+    "pnl_total": 20736.73,
+    "max_share_activo": 0.496,
+    "alarma_concentracion_activo": false,
+    "pnl_por_tercio": [
+      2679.7,
+      8111.4,
+      9945.62
+    ],
+    "max_share_tercio": 0.48,
+    "alarma_concentracion_temporal": false
+  }
+}

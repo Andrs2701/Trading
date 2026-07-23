@@ -1,0 +1,11 @@
+[WFO] grid='coarse' -> 27 combos/fold · 11 activos · 3 folds
+[WFO] holdout intocable desde 2025-07-01 (excluido de todos los folds)
+[WFO] F1: IS obj=1.2214 (N=1404, E_R=0.0962) | OOS obj=-0.1708 (N=887, E_R=-0.0219) | best={'vol_spike_mult': 1.8, 'range_expansion_mult': 1.4, 'stop_atr_mult': 1.5} | 70.0s
+[WFO] F2: IS obj=0.6968 (N=2161, E_R=0.0543) | OOS obj=-0.0577 (N=742, E_R=-0.0085) | best={'vol_spike_mult': 1.8, 'range_expansion_mult': 1.4, 'stop_atr_mult': 1.8} | 82.9s
+[WFO] F3: IS obj=0.4661 (N=3425, E_R=0.0341) | OOS obj=1.0961 (N=307, E_R=0.2014) | best={'vol_spike_mult': 1.8, 'range_expansion_mult': 1.2, 'stop_atr_mult': 1.8} | 104.7s
+
+[WFO] WFE = 0.3639 -> SOBREOPTIMIZACION (WFE<0.4)
+[WFO] mean IS obj=0.7948 | mean OOS obj=0.2892
+[WFO] config congelada: {'vol_spike_mult': 1.8, 'range_expansion_mult': 1.2, 'stop_atr_mult': 1.8}
+
+[OK] resultados -> results/wfo_results_breakout.json
