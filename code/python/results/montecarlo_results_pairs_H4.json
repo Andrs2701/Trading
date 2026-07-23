@@ -1,0 +1,151 @@
+{
+  "timeframe": "H4",
+  "pairs": [
+    "XRPUSDT-UNIUSDT",
+    "ETHUSDT-SOLUSDT",
+    "ETHUSDT-XRPUSDT",
+    "ETHUSDT-AVAXUSDT",
+    "XRPUSDT-BNBUSDT",
+    "ETHUSDT-UNIUSDT"
+  ],
+  "config": {
+    "lookback_bars": 60,
+    "z_entry": 2.5,
+    "z_exit": 0.25,
+    "z_stop": 4.0
+  },
+  "n_trades": 723,
+  "expectancy_R_base": 0.0306,
+  "mc1_bootstrap": {
+    "dd_mean": -0.1208,
+    "dd_p95": -0.2082,
+    "dd_worst": -0.3614,
+    "max_loss_streak_p95": 14,
+    "max_loss_streak_worst": 25
+  },
+  "mc2_frictions": {
+    "expectancy_mean": 0.0171,
+    "expectancy_p25": 0.0168,
+    "expectancy_p05": 0.0164,
+    "pasa_p25_positivo": true
+  },
+  "mc3_price_noise": {
+    "expectancy_base": 0.0306,
+    "expectancy_mean_noisy": 0.0306,
+    "expectancy_p05_noisy": 0.0274,
+    "caida_relativa": 0.0785,
+    "gatillo_fragil": false
+  },
+  "sensibilidad": [
+    {
+      "param": "max_holding_mult",
+      "cambio": "-20%",
+      "valor": 3.2,
+      "expectancy_R": 0.0306,
+      "trades": 723,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "max_holding_mult",
+      "cambio": "+20%",
+      "valor": 4.8,
+      "expectancy_R": 0.0306,
+      "trades": 723,
+      "delta_rel": 0.0,
+      "critico": false
+    },
+    {
+      "param": "fee_pct",
+      "cambio": "-20%",
+      "valor": 0.00044,
+      "expectancy_R": 0.0321,
+      "trades": 723,
+      "delta_rel": 0.049,
+      "critico": false
+    },
+    {
+      "param": "fee_pct",
+      "cambio": "+20%",
+      "valor": 0.00066,
+      "expectancy_R": 0.0291,
+      "trades": 723,
+      "delta_rel": -0.049,
+      "critico": false
+    },
+    {
+      "param": "spread_pct",
+      "cambio": "-20%",
+      "valor": 0.00016,
+      "expectancy_R": 0.0309,
+      "trades": 723,
+      "delta_rel": 0.01,
+      "critico": false
+    },
+    {
+      "param": "spread_pct",
+      "cambio": "+20%",
+      "valor": 0.00024,
+      "expectancy_R": 0.0303,
+      "trades": 723,
+      "delta_rel": -0.01,
+      "critico": false
+    },
+    {
+      "param": "slip_pct",
+      "cambio": "-20%",
+      "valor": 0.00016,
+      "expectancy_R": 0.0312,
+      "trades": 723,
+      "delta_rel": 0.02,
+      "critico": false
+    },
+    {
+      "param": "slip_pct",
+      "cambio": "+20%",
+      "valor": 0.00024,
+      "expectancy_R": 0.0301,
+      "trades": 723,
+      "delta_rel": -0.016,
+      "critico": false
+    }
+  ],
+  "estabilidad": {
+    "por_par": {
+      "XRPUSDT-UNIUSDT": {
+        "trades": 118,
+        "pnl": 55.23
+      },
+      "ETHUSDT-SOLUSDT": {
+        "trades": 108,
+        "pnl": -43.01
+      },
+      "ETHUSDT-XRPUSDT": {
+        "trades": 137,
+        "pnl": 3461.93
+      },
+      "ETHUSDT-AVAXUSDT": {
+        "trades": 105,
+        "pnl": -136.72
+      },
+      "XRPUSDT-BNBUSDT": {
+        "trades": 137,
+        "pnl": -106.96
+      },
+      "ETHUSDT-UNIUSDT": {
+        "trades": 118,
+        "pnl": -746.39
+      }
+    },
+    "pnl_total": 2484.08,
+    "max_share_par": 1.394,
+    "alarma_concentracion_par": true,
+    "pnl_por_tercio": [
+      984.13,
+      510.58,
+      989.36
+    ],
+    "max_share_tercio": 0.398,
+    "alarma_concentracion_temporal": false
+  }
+}
