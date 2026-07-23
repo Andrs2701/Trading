@@ -173,8 +173,25 @@ class TF:
 
 
 def resample(m5: pd.DataFrame, rule: str, offset: str | None = None) -> pd.DataFrame:
+    """Resamplea a `rule` (p.ej. '1h', '1D'). Si se pasa `offset`, ancla el
+    inicio de cada vela a esa hora en vez de medianoche -- usado para D1 con
+    convención forex (cierre NY, 22:00 UTC).
+
+    IMPORTANTE: pandas ignora silenciosamente `offset`/`origin` en
+    resample() cuando `rule` no es "Tick-like" (h/m/s/ms/us/ns) -- para '1D'
+    el offset NO tiene ningún efecto y pandas ni siquiera levanta error,
+    solo un RuntimeWarning. Por eso el ajuste se hace a mano: desplazar el
+    índice, resamplear a medianoche, desplazar de vuelta.
+    """
     agg = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
-    return m5.resample(rule, label="left", closed="left", offset=offset).agg(agg).dropna()
+    if offset is None:
+        return m5.resample(rule, label="left", closed="left").agg(agg).dropna()
+    shift = pd.Timedelta(offset)
+    shifted = m5.copy()
+    shifted.index = shifted.index - shift
+    out = shifted.resample(rule, label="left", closed="left").agg(agg).dropna()
+    out.index = out.index + shift
+    return out
 
 
 # ----------------------------------------------------------------------------
