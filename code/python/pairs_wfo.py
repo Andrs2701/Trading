@@ -112,8 +112,10 @@ def build_grid(grid: dict) -> list[dict]:
     return [dict(zip(keys, vals)) for vals in itertools.product(*grid.values())]
 
 
-def run_wfo_tf(timeframe: str, jobs: int) -> dict:
+def run_wfo_tf(timeframe: str, jobs: int, exclude: list[str] | None = None) -> dict:
     pairs = load_pairs_for_tf(timeframe)
+    if exclude:
+        pairs = [p for p in pairs if p not in exclude]
     if not pairs:
         print(f"[PAIRS-WFO-{timeframe}] sin pares cointegrados en esta temporalidad, se omite")
         return {}
@@ -201,16 +203,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--timeframe", choices=["H1", "H4", "D1", "all"], default="all")
     ap.add_argument("--jobs", type=int, default=4)
+    ap.add_argument("--exclude", type=str, default=None,
+                     help="Pares a excluir del pool, separados por coma (p.ej. ETHUSDT-XRPUSDT)")
+    ap.add_argument("--tag", type=str, default=None,
+                     help="Sufijo para el archivo de salida, para no sobreescribir el resultado canonico")
     args = ap.parse_args()
+    exclude = args.exclude.split(",") if args.exclude else None
 
     tfs = ["H1", "H4", "D1"] if args.timeframe == "all" else [args.timeframe]
     all_results = {}
     for tf in tfs:
-        res = run_wfo_tf(tf, args.jobs)
+        res = run_wfo_tf(tf, args.jobs, exclude=exclude)
         if res:
             all_results[tf] = res
             os.makedirs("results", exist_ok=True)
-            with open(f"results/wfo_results_pairs_{tf}.json", "w", encoding="utf-8") as f:
+            suffix = f"_{args.tag}" if args.tag else ""
+            with open(f"results/wfo_results_pairs_{tf}{suffix}.json", "w", encoding="utf-8") as f:
                 json.dump(res, f, indent=2, ensure_ascii=False)
 
     print("=== COMPARACION ENTRE TEMPORALIDADES ===")

@@ -194,8 +194,9 @@ def stability(overrides: dict, pairs: list, timeframe: str) -> dict:
     }
 
 
-def get_config(timeframe: str) -> dict:
-    fn = f"results/wfo_results_pairs_{timeframe}.json"
+def get_config(timeframe: str, tag: str | None = None) -> dict:
+    suffix = f"_{tag}" if tag else ""
+    fn = f"results/wfo_results_pairs_{timeframe}{suffix}.json"
     if os.path.exists(fn):
         with open(fn, encoding="utf-8") as f:
             wfo = json.load(f)
@@ -209,11 +210,16 @@ def main():
     ap.add_argument("--config-from-wfo", action="store_true")
     ap.add_argument("--iters", type=int, default=5000)
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--exclude", type=str, default=None,
+                     help="Pares a excluir del pool, separados por coma")
+    ap.add_argument("--tag", type=str, default=None,
+                     help="Sufijo para leer/escribir resultados sin pisar el canonico")
     args = ap.parse_args()
+    exclude = set(args.exclude.split(",")) if args.exclude else set()
 
-    pairs = load_pairs_for_tf(args.timeframe)
+    pairs = [p for p in load_pairs_for_tf(args.timeframe) if p not in exclude]
     if args.config_from_wfo:
-        overrides = get_config(args.timeframe)
+        overrides = get_config(args.timeframe, tag=args.tag)
         print(f"[MC-PAIRS-{args.timeframe}] config congelada del WFO: {overrides}")
     else:
         overrides = {}
@@ -249,7 +255,8 @@ def main():
         "sensibilidad": sens, "estabilidad": stab,
     }
     os.makedirs("results", exist_ok=True)
-    out_fn = f"results/montecarlo_results_pairs_{args.timeframe}.json"
+    suffix = f"_{args.tag}" if args.tag else ""
+    out_fn = f"results/montecarlo_results_pairs_{args.timeframe}{suffix}.json"
     with open(out_fn, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2, ensure_ascii=False)
 
