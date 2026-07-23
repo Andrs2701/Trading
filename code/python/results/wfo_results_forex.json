@@ -1,0 +1,408 @@
+{
+  "grid": "coarse",
+  "grid_keys": [
+    "er_clean",
+    "er_arrive",
+    "decel_max"
+  ],
+  "assets": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "XAUUSD"
+  ],
+  "holdout_start": "2025-01-01 00:00:00+00:00",
+  "folds": [
+    {
+      "fold": "F1",
+      "is_window": [
+        "2010-01-01",
+        "2016-01-01"
+      ],
+      "oos_window": [
+        "2016-01-01",
+        "2018-01-01"
+      ],
+      "best_overrides": {
+        "er_clean": 0.38,
+        "er_arrive": 0.35,
+        "decel_max": 0.75
+      },
+      "is": {
+        "obj": 0.422,
+        "trades": 51,
+        "expectancy_R": 0.0736,
+        "max_dd": -0.049,
+        "win_rate": 0.3529
+      },
+      "oos": {
+        "obj": -0.2298,
+        "trades": 10,
+        "expectancy_R": -0.0829,
+        "max_dd": -0.0281,
+        "win_rate": 0.3
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.35,
+            "decel_max": 0.75
+          },
+          "obj": 0.422,
+          "trades": 51,
+          "expectancy_R": 0.0736,
+          "max_dd": -0.049,
+          "win_rate": 0.3529
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.26,
+            "decel_max": 0.75
+          },
+          "obj": 0.2818,
+          "trades": 53,
+          "expectancy_R": 0.0491,
+          "max_dd": -0.0536,
+          "win_rate": 0.3396
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.44,
+            "decel_max": 0.75
+          },
+          "obj": 0.2396,
+          "trades": 46,
+          "expectancy_R": 0.0436,
+          "max_dd": -0.0467,
+          "win_rate": 0.3261
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.35,
+            "decel_max": 0.6
+          },
+          "obj": 0.1306,
+          "trades": 42,
+          "expectancy_R": 0.0259,
+          "max_dd": -0.0568,
+          "win_rate": 0.2857
+        },
+        {
+          "overrides": {
+            "er_clean": 0.22,
+            "er_arrive": 0.35,
+            "decel_max": 0.6
+          },
+          "obj": 0.0986,
+          "trades": 96,
+          "expectancy_R": 0.013,
+          "max_dd": -0.0578,
+          "win_rate": 0.25
+        }
+      ],
+      "elapsed_s": 477.5
+    },
+    {
+      "fold": "F2",
+      "is_window": [
+        "2010-01-01",
+        "2018-01-01"
+      ],
+      "oos_window": [
+        "2018-01-01",
+        "2020-01-01"
+      ],
+      "best_overrides": {
+        "er_clean": 0.38,
+        "er_arrive": 0.35,
+        "decel_max": 0.75
+      },
+      "is": {
+        "obj": 0.3006,
+        "trades": 61,
+        "expectancy_R": 0.0479,
+        "max_dd": -0.049,
+        "win_rate": 0.3443
+      },
+      "oos": {
+        "obj": -999.0,
+        "trades": 1,
+        "expectancy_R": 0.0,
+        "max_dd": 0.0,
+        "win_rate": 0.0
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.35,
+            "decel_max": 0.75
+          },
+          "obj": 0.3006,
+          "trades": 61,
+          "expectancy_R": 0.0479,
+          "max_dd": -0.049,
+          "win_rate": 0.3443
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.44,
+            "decel_max": 0.75
+          },
+          "obj": 0.2702,
+          "trades": 53,
+          "expectancy_R": 0.0458,
+          "max_dd": -0.0467,
+          "win_rate": 0.3396
+        },
+        {
+          "overrides": {
+            "er_clean": 0.22,
+            "er_arrive": 0.35,
+            "decel_max": 0.75
+          },
+          "obj": 0.2217,
+          "trades": 125,
+          "expectancy_R": 0.0264,
+          "max_dd": -0.0665,
+          "win_rate": 0.272
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.26,
+            "decel_max": 0.75
+          },
+          "obj": 0.1761,
+          "trades": 63,
+          "expectancy_R": 0.0281,
+          "max_dd": -0.0536,
+          "win_rate": 0.3333
+        },
+        {
+          "overrides": {
+            "er_clean": 0.22,
+            "er_arrive": 0.26,
+            "decel_max": 0.75
+          },
+          "obj": 0.0682,
+          "trades": 138,
+          "expectancy_R": 0.0079,
+          "max_dd": -0.072,
+          "win_rate": 0.2609
+        }
+      ],
+      "elapsed_s": 497.7
+    },
+    {
+      "fold": "F3",
+      "is_window": [
+        "2010-01-01",
+        "2020-01-01"
+      ],
+      "oos_window": [
+        "2020-01-01",
+        "2022-01-01"
+      ],
+      "best_overrides": {
+        "er_clean": 0.38,
+        "er_arrive": 0.35,
+        "decel_max": 0.75
+      },
+      "is": {
+        "obj": 0.2617,
+        "trades": 62,
+        "expectancy_R": 0.0414,
+        "max_dd": -0.049,
+        "win_rate": 0.3387
+      },
+      "oos": {
+        "obj": -0.5123,
+        "trades": 26,
+        "expectancy_R": -0.1143,
+        "max_dd": -0.0275,
+        "win_rate": 0.2308
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.35,
+            "decel_max": 0.75
+          },
+          "obj": 0.2617,
+          "trades": 62,
+          "expectancy_R": 0.0414,
+          "max_dd": -0.049,
+          "win_rate": 0.3387
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.44,
+            "decel_max": 0.75
+          },
+          "obj": 0.2282,
+          "trades": 54,
+          "expectancy_R": 0.0383,
+          "max_dd": -0.0467,
+          "win_rate": 0.3333
+        },
+        {
+          "overrides": {
+            "er_clean": 0.22,
+            "er_arrive": 0.35,
+            "decel_max": 0.75
+          },
+          "obj": 0.1597,
+          "trades": 129,
+          "expectancy_R": 0.0187,
+          "max_dd": -0.0665,
+          "win_rate": 0.2636
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.26,
+            "decel_max": 0.75
+          },
+          "obj": 0.1395,
+          "trades": 64,
+          "expectancy_R": 0.0221,
+          "max_dd": -0.0536,
+          "win_rate": 0.3281
+        },
+        {
+          "overrides": {
+            "er_clean": 0.22,
+            "er_arrive": 0.26,
+            "decel_max": 0.75
+          },
+          "obj": 0.0125,
+          "trades": 142,
+          "expectancy_R": 0.0014,
+          "max_dd": -0.072,
+          "win_rate": 0.2535
+        }
+      ],
+      "elapsed_s": 549.7
+    },
+    {
+      "fold": "F4",
+      "is_window": [
+        "2010-01-01",
+        "2022-01-01"
+      ],
+      "oos_window": [
+        "2022-01-01",
+        "2025-01-01"
+      ],
+      "best_overrides": {
+        "er_clean": 0.38,
+        "er_arrive": 0.35,
+        "decel_max": 0.75
+      },
+      "is": {
+        "obj": -0.0331,
+        "trades": 88,
+        "expectancy_R": -0.0046,
+        "max_dd": -0.0625,
+        "win_rate": 0.3068
+      },
+      "oos": {
+        "obj": 0.0116,
+        "trades": 32,
+        "expectancy_R": 0.0025,
+        "max_dd": -0.0409,
+        "win_rate": 0.3438
+      },
+      "top5_is": [
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.35,
+            "decel_max": 0.75
+          },
+          "obj": -0.0331,
+          "trades": 88,
+          "expectancy_R": -0.0046,
+          "max_dd": -0.0625,
+          "win_rate": 0.3068
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.26,
+            "decel_max": 0.75
+          },
+          "obj": -0.1479,
+          "trades": 91,
+          "expectancy_R": -0.0206,
+          "max_dd": -0.0654,
+          "win_rate": 0.2967
+        },
+        {
+          "overrides": {
+            "er_clean": 0.22,
+            "er_arrive": 0.35,
+            "decel_max": 0.75
+          },
+          "obj": -0.1717,
+          "trades": 167,
+          "expectancy_R": -0.0192,
+          "max_dd": -0.0888,
+          "win_rate": 0.2455
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.44,
+            "decel_max": 0.75
+          },
+          "obj": -0.2573,
+          "trades": 77,
+          "expectancy_R": -0.0397,
+          "max_dd": -0.0706,
+          "win_rate": 0.2857
+        },
+        {
+          "overrides": {
+            "er_clean": 0.38,
+            "er_arrive": 0.35,
+            "decel_max": 0.45
+          },
+          "obj": -0.2971,
+          "trades": 62,
+          "expectancy_R": -0.0506,
+          "max_dd": -0.0681,
+          "win_rate": 0.2419
+        }
+      ],
+      "elapsed_s": 691.4
+    }
+  ],
+  "mean_is_obj": 0.2378,
+  "mean_oos_obj": -249.9326,
+  "wfe": -1050.9922,
+  "wfe_verdict": "NO RENTABLE OOS (mean_oos=-249.9326<=0)",
+  "rentable_is": true,
+  "rentable_oos": false,
+  "config_congelada": {
+    "er_clean": 0.38,
+    "er_arrive": 0.35,
+    "decel_max": 0.75
+  },
+  "oos_total_trades": 69,
+  "oos_pooled_expectancy_R": -0.0539,
+  "is_pooled_expectancy_R": 0.0337,
+  "folds_con_pocos_trades_oos": [
+    "F1",
+    "F2"
+  ],
+  "nota_metodologica": "mean_oos_obj original esta contaminado por el sentinel -999 de objective() cuando un fold tiene <5 trades OOS (Fold 2, N=1) -- no es representativo. Ver oos_pooled_expectancy_R (ponderado por trades) como lectura correcta."
+}

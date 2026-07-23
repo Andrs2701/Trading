@@ -208,6 +208,23 @@ def run_wfo(grid_name: str, jobs: int, assets: list) -> dict:
     results["mean_oos_obj"] = round(mean_oos, 4)
     results["wfe"] = round(wfe, 4) if wfe is not None else None
 
+    # mean_oos_obj puede quedar contaminado por el sentinel -999 (objective()
+    # con trades<MIN_TRADES) si algun fold tuvo muy pocos trades OOS -- un
+    # solo fold asi puede arrastrar el promedio a un numero sin sentido, sin
+    # que sea representativo del desempeño real. Se reporta ademas una
+    # expectancy OOS pooled (ponderada por trades, ignorando el objective
+    # compuesto) como lectura mas honesta cuando esto pasa.
+    MIN_TRADES_FOLD_CONFIABLE = 15
+    folds_pocos_trades = [f["fold"] for f in results["folds"] if f["oos"]["trades"] < MIN_TRADES_FOLD_CONFIABLE]
+    oos_total_trades = sum(f["oos"]["trades"] for f in results["folds"])
+    oos_pooled_expectancy = (
+        sum(f["oos"]["trades"] * f["oos"]["expectancy_R"] for f in results["folds"]) / oos_total_trades
+        if oos_total_trades > 0 else 0.0
+    )
+    results["oos_total_trades"] = oos_total_trades
+    results["oos_pooled_expectancy_R"] = round(oos_pooled_expectancy, 4)
+    results["folds_con_pocos_trades_oos"] = folds_pocos_trades
+
     if mean_is <= 0:
         verdict = f"NO RENTABLE IN-SAMPLE (mean_is={mean_is:.4f}<=0)"
     elif mean_oos <= 0:
@@ -220,6 +237,11 @@ def run_wfo(grid_name: str, jobs: int, assets: list) -> dict:
         verdict = "DEBIL (0.4<=WFE<0.5)"
     else:
         verdict = "SOBREOPTIMIZACION (WFE<0.4)"
+    if folds_pocos_trades:
+        verdict += (f" [AVISO: folds {folds_pocos_trades} tienen <{MIN_TRADES_FOLD_CONFIABLE} "
+                    f"trades OOS -- mean_oos_obj puede estar contaminado por el sentinel de "
+                    f"muestra insuficiente; ver oos_pooled_expectancy_R={round(oos_pooled_expectancy, 4)} "
+                    f"sobre {oos_total_trades} trades totales como lectura alternativa]")
     results["wfe_verdict"] = verdict
     results["rentable_is"] = bool(mean_is > 0)
     results["rentable_oos"] = bool(mean_oos > 0)
@@ -228,6 +250,7 @@ def run_wfo(grid_name: str, jobs: int, assets: list) -> dict:
     wfe_str = f"{wfe:.4f}" if wfe is not None else "N/A"
     print(f"\n[WFO-FX] WFE = {wfe_str} -> {verdict}")
     print(f"[WFO-FX] mean IS obj={mean_is:.4f} | mean OOS obj={mean_oos:.4f}")
+    print(f"[WFO-FX] OOS pooled: {oos_total_trades} trades, expectancy={oos_pooled_expectancy:.4f}R")
     print(f"[WFO-FX] config congelada: {results['config_congelada']}")
     return results
 
