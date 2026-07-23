@@ -58,13 +58,24 @@ Racha de pérdidas (bootstrap): p95=14, peor caso=25 operaciones seguidas — mu
 
 **No se aprueba formalmente** bajo el criterio estricto establecido desde el inicio del proyecto (WFE≥0.5 para "aceptable"; H4 da 0.44, justo por debajo). El criterio no se relaja porque el resultado se vea prometedor — es la misma regla aplicada a las 5 hipótesis anteriores.
 
-Dicho esto, **es objetivamente el resultado más sólido de las 6 hipótesis**: el único que resuelve el problema de drawdown catastrófico que afectó a SATAR-1, HYDRA, SWEEP y BREAKOUT-ATR en todas sus variantes (incluida la de 11 activos), el único con sensibilidad completamente limpia, y el único con dos folds OOS mejores que IS. La razón por la que no pasa el umbral formal es la concentración en un solo par (ETHUSDT-XRPUSDT) y el WFE marginalmente bajo el corte — no un fallo de expectativa ni de riesgo de cola.
+Dicho esto, **el hallazgo de perfil de riesgo es real y sobrevive todo escrutinio adicional** (ver §6): mean-reversion resuelve el problema de drawdown catastrófico que afectó a SATAR-1, HYDRA, SWEEP y BREAKOUT-ATR en todas sus variantes, y es la única hipótesis con sensibilidad completamente limpia. Pero el *edge específico* del pool H4 resultó estar concentrado al 100% en un solo par (ETHUSDT-XRPUSDT) — y al aislarlo o excluirlo, ninguno de los dos cortes pasa la validación limpia tampoco (§6). No es un matiz menor: es la diferencia entre "casi aprobado" y "el riesgo se resolvió pero el edge concreto todavía no aparece".
+
+## 6. Aislando el efecto de ETHUSDT-XRPUSDT (2026-07-23)
+
+Se corrieron los dos cortes que responden directamente la pregunta de §4 (usando `pairs_wfo.py --exclude`/`--tag`, mismo grid y folds, sin cambiar ninguna regla):
+
+| Corte | Pares | mean_oos_obj | WFE | Veredicto |
+|---|---|---|---|---|
+| Pool completo H4 | 6 | +0.2460 | 0.4401 | DÉBIL |
+| **Sin ETHUSDT-XRPUSDT** | 5 | **-0.0011** | -0.0101 | ❌ NO RENTABLE OOS |
+| **Solo ETHUSDT-XRPUSDT** | 1 | +0.5457 | **0.2844** | ❌ SOBREOPTIMIZACIÓN |
+
+**Sin el par dominante, el resultado colapsa a prácticamente cero** — confirma que los otros 5 pares, juntos, no tienen ninguna ventaja real; todo el resultado del pool venía de un solo par.
+
+**Aislado, ETHUSDT-XRPUSDT tampoco pasa una validación limpia.** El promedio OOS se ve incluso mejor que en el pool (+0.546), pero el propio chequeo de sobreajuste lo rechaza: la muestra OOS es chica (75, 25 y 24 trades por fold — 124 en total) y el resultado in-sample es sospechosamente alto (hasta +0.24R de expectancy en F3), la firma clásica de un óptimo que no generaliza. El mismo criterio WFE que se aplicó sin excepción a las otras 5 hipótesis lo rechaza también aquí.
+
+**Conclusión honesta:** ninguno de los tres cortes (pool completo, pool sin el par dominante, o el par dominante solo) pasa la validación limpia del proyecto. El hallazgo de *perfil de riesgo* — que mean-reversion evita el problema de drawdown catastrófico por racha de pérdidas correlacionada que afectó a las 5 hipótesis anteriores — sigue siendo válido y estructuralmente sensato (ningún corte de pares, ni siquiera los que fallan en expectativa, mostró nada cerca de los drawdowns de -78%/-96% de las variantes tendenciales). Pero el *edge específico* de esta implementación no queda confirmado en ningún corte probado.
 
 ### Recomendación honesta
 
-**No operar con capital real todavía**, por la misma disciplina del resto del proyecto — pero esta hipótesis es la candidata más clara para una segunda ronda de refinamiento, con dos caminos concretos y no excluyentes:
-
-1. **Ampliar el universo de pares candidatos.** Solo se probaron los 11 activos ya usados en BREAKOUT-ATR. Correr el mismo screening de cointegración (§2) sobre un universo más amplio de criptos podría encontrar más pares genuinamente cointegrados, reduciendo la dependencia de ETHUSDT-XRPUSDT — es exactamente el tipo de diversificación que en las hipótesis tendenciales no resolvía el problema de fondo (racha de pérdidas correlacionada), pero aquí sí sería relevante porque el riesgo de cola ya está resuelto; el problema restante es concentración de fuente de retorno, no de riesgo de cola.
-2. **Re-optimizar excluyendo ETHUSDT-XRPUSDT** para ver si el resto de los pares, evaluados de forma más limpia (sin que el par dominante oculte su desempeño individual), sostienen un WFE aceptable por sí solos — esto SÍ requeriría un nuevo WFO completo (no se puede decidir mirando el resultado ya obtenido, sería data-snooping).
-
-Cualquiera de los dos caminos es una continuación legítima de esta misma hipótesis, no una hipótesis nueva.
+**No operar con capital real.** No es una cuestión de encontrar el corte correcto de estos mismos pares — ya se probaron las tres combinaciones posibles y ninguna pasa. El camino de continuación legítimo (no una hipótesis nueva, sino más iteración de ésta) es **ampliar el universo de pares candidatos** más allá de los 11 activos ya usados en BREAKOUT-ATR — correr el mismo screening de cointegración (§2) sobre más criptos para buscar relaciones genuinamente nuevas, no forzar más análisis sobre las 6 que ya se descartaron. El valor real de esta fase fue confirmar, con evidencia, que mean-reversion sí resuelve el problema de riesgo de cola — vale la pena seguir buscando el par/activo correcto dentro de ese paradigma antes de volver a uno tendencial.
